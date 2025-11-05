@@ -1,0 +1,19 @@
+# Add REST Endpoint Workflow Configuration
+name: add-rest-endpoint
+description: "Add REST API endpoint with OpenAPI documentation and contract tests"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+module_data_path: "{config_source}:module_data_path"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/add-rest-endpoint"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+code_templates: "{module_data_path}/templates/controller"
+test_templates: "{module_data_path}/templates/tests"
+
+target_project_path: "{{project_path}}"
+base_package: "{{base_package}}"
+
+standalone: false

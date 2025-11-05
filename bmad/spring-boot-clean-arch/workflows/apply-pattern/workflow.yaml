@@ -1,0 +1,18 @@
+# Apply Pattern Workflow Configuration
+name: apply-pattern
+description: "Apply design patterns (CQRS, Event Sourcing, Saga, etc.) to application"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+module_data_path: "{config_source}:module_data_path"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/apply-pattern"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+pattern_templates: "{module_data_path}/patterns"
+
+target_project_path: "{{project_path}}"
+base_package: "{{base_package}}"
+
+standalone: false

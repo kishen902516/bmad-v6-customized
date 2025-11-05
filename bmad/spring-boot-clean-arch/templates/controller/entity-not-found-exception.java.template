@@ -1,0 +1,45 @@
+package {{base_package}}.presentation.rest.exception;
+
+/**
+ * Exception thrown when an entity is not found.
+ *
+ * This exception is typically thrown by use cases when a requested entity does not exist.
+ * It is caught by GlobalExceptionHandler and converted to a 404 HTTP response.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public class EntityNotFoundException extends RuntimeException {
+
+    /**
+     * Constructor with message.
+     *
+     * @param message the error message
+     */
+    public EntityNotFoundException(String message) {
+        super(message);
+    }
+
+    /**
+     * Constructor with message and cause.
+     *
+     * @param message the error message
+     * @param cause the cause
+     */
+    public EntityNotFoundException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    /**
+     * Factory method for entity not found by ID.
+     *
+     * @param entityName the entity name
+     * @param id the entity ID
+     * @return exception instance
+     */
+    public static EntityNotFoundException forId(String entityName, Object id) {
+        return new EntityNotFoundException(
+                String.format("%s with ID %s not found", entityName, id)
+        );
+    }
+}

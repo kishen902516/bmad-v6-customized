@@ -1,0 +1,60 @@
+package {{base_package}}.infrastructure.adapter.persistence.mapper;
+
+import {{base_package}}.domain.entity.{{entity_name}};
+import {{base_package}}.infrastructure.adapter.persistence.entity.{{entity_name}}JpaEntity;
+{{imports}}
+
+/**
+ * Mapper between domain entity and JPA entity.
+ *
+ * Converts between Clean Architecture domain model and JPA persistence model.
+ * This separation allows domain to remain framework-independent.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public class {{entity_name}}Mapper {
+
+    /**
+     * Convert domain entity to JPA entity.
+     *
+     * @param domain the domain entity
+     * @return the JPA entity
+     */
+    public static {{entity_name}}JpaEntity toJpa({{entity_name}} domain) {
+        if (domain == null) {
+            return null;
+        }
+
+        {{entity_name}}JpaEntity jpa = new {{entity_name}}JpaEntity();
+        jpa.setId(domain.getId());
+        {{field_mappings_to_jpa}}
+        return jpa;
+    }
+
+    /**
+     * Convert JPA entity to domain entity.
+     *
+     * @param jpa the JPA entity
+     * @return the domain entity
+     */
+    public static {{entity_name}} toDomain({{entity_name}}JpaEntity jpa) {
+        if (jpa == null) {
+            return null;
+        }
+
+        return new {{entity_name}}(
+            {{constructor_args_from_jpa}}
+        );
+    }
+
+    /**
+     * Update JPA entity from domain entity (for updates).
+     *
+     * @param jpa the JPA entity to update
+     * @param domain the source domain entity
+     */
+    public static void updateJpaFromDomain({{entity_name}}JpaEntity jpa, {{entity_name}} domain) {
+        {{field_updates_from_domain}}
+    }
+}

@@ -1,0 +1,25 @@
+package {{base_package}}.application.usecase;
+
+import {{base_package}}.application.dto.{{use_case_name}}Input;
+import {{base_package}}.application.dto.{{use_case_name}}Output;
+
+/**
+ * Use case interface for {{use_case_description}}.
+ *
+ * This interface defines the contract for the use case in the application layer.
+ * It follows the Single Responsibility Principle - one use case, one responsibility.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public interface {{use_case_name}}UseCase {
+
+    /**
+     * Execute the {{use_case_name}} use case.
+     *
+     * @param input the use case input data
+     * @return the use case output data
+     * @throws {{exception_name}} if execution fails
+     */
+    {{output_type}} execute({{input_type}} input);
+}

@@ -1,0 +1,23 @@
+# Add Entity Workflow Configuration
+name: add-entity
+description: "Add domain entity with complete layer support and synchronized tests"
+author: "Kishen Sivalingam"
+
+# Configuration source
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+module_data_path: "{config_source}:module_data_path"
+
+# Workflow paths
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/add-entity"
+template: false  # This is an interactive workflow
+instructions: "{installed_path}/instructions.md"
+
+# Templates
+code_templates: "{module_data_path}/templates/entity"
+test_templates: "{module_data_path}/templates/tests"
+
+# Target project context (provided at runtime)
+target_project_path: "{{project_path}}"
+base_package: "{{base_package}}"
+
+standalone: false  # Usually invoked from Spring Architecture Agent

@@ -1,0 +1,73 @@
+# Spring Boot Clean Architecture Generator Module Configuration
+# This file defines installation questions and module configuration values
+
+code: spring-boot-clean-arch
+name: "Spring Boot Clean Architecture Generator"
+default_selected: false
+
+# Welcome message shown during installation
+prompt:
+  - "Thank you for choosing the Spring Boot Clean Architecture Generator!"
+  - "This module helps you build Spring Boot 3.x applications with Java 21 that follow Clean Architecture principles."
+  - "Features: Automated ArchUnit enforcement, complete test generation, intelligent conversational guidance."
+
+# Core config values are automatically inherited:
+## user_name
+## communication_language
+## document_output_language
+## output_folder
+
+# ============================================================================
+# CONFIGURATION FIELDS
+# ============================================================================
+
+# INTERACTIVE: Where to save generated Spring Boot projects
+projects_output_path:
+  prompt: "Where should generated Spring Boot projects be saved?"
+  default: "output/spring-projects"
+  result: "{project-root}/{value}"
+
+# INTERACTIVE: Default scenario for new projects
+default_scenario:
+  prompt: "Which scenario should be the default for new projects?"
+  default: "enterprise"
+  result: "{value}"
+  single-select:
+    - value: "simple-crud"
+      label: "Simple CRUD - Minimal layers for small projects"
+    - value: "enterprise"
+      label: "Enterprise Microservice - Full DDD with all layers (Recommended)"
+    - value: "complex"
+      label: "Complex Domain-Rich - Advanced patterns (CQRS, Event Sourcing)"
+
+# INTERACTIVE: Include insurance industry examples
+include_examples:
+  prompt: "Include example domain models from insurance industry?"
+  default: "yes"
+  result: "{value}"
+  single-select:
+    - value: "yes"
+      label: "Yes - Include Policy Management, Claims Processing, and Underwriting examples"
+    - value: "no"
+      label: "No - Clean templates only"
+
+# INTERACTIVE: ArchUnit strictness level
+archunit_strictness:
+  prompt: "ArchUnit rule strictness level?"
+  default: "standard"
+  result: "{value}"
+  single-select:
+    - value: "relaxed"
+      label: "Relaxed - Warnings only, doesn't fail build"
+    - value: "standard"
+      label: "Standard - Recommended rules, fails on violations (Recommended)"
+    - value: "strict"
+      label: "Strict - All rules enforced, zero tolerance"
+
+# STATIC: Module data path (internal use)
+module_data_path:
+  result: "{project-root}/bmad/spring-boot-clean-arch/data"
+
+# STATIC: Module version
+module_version:
+  result: "1.0.0"

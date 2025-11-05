@@ -1,0 +1,31 @@
+package {{base_package}}.application.dto;
+
+{{imports}}
+
+/**
+ * Output DTO for {{use_case_name}} use case.
+ *
+ * This Record represents the output data returned by the use case.
+ * It is immutable and contains only the data needed by the caller.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public record {{use_case_name}}Output(
+    {{record_components}}
+) {
+
+    /**
+     * Factory method to create output from domain entity.
+     *
+     * @param {{entity_name_camel}} the domain entity
+     * @return output DTO
+     */
+    public static {{use_case_name}}Output from({{entity_name}} {{entity_name_camel}}) {
+        return new {{use_case_name}}Output(
+            {{factory_args_from_entity}}
+        );
+    }
+
+    {{helper_methods}}
+}

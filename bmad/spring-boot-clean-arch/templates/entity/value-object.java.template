@@ -1,0 +1,41 @@
+package {{base_package}}.domain.valueobject;
+
+{{imports}}
+
+/**
+ * {{value_object_description}}
+ *
+ * This is a Value Object (immutable) implemented as a Java Record.
+ * Value Objects are defined by their attributes, not identity.
+ * They are immutable and validate themselves on construction.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public record {{value_object_name}}({{record_components}}) {
+
+    /**
+     * Compact constructor with validation.
+     * Enforces invariants for the value object.
+     *
+     * @throws IllegalArgumentException if validation fails
+     */
+    public {{value_object_name}} {
+        {{validations}}
+    }
+
+    {{derived_methods}}
+
+    /**
+     * Factory method for creating {{value_object_name}} with validation.
+     *
+     {{factory_params_javadoc}}
+     * @return validated {{value_object_name}} instance
+     * @throws IllegalArgumentException if validation fails
+     */
+    public static {{value_object_name}} of({{factory_params}}) {
+        return new {{value_object_name}}({{factory_args}});
+    }
+
+    {{business_methods}}
+}

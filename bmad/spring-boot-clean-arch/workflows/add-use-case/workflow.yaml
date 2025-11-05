@@ -1,0 +1,23 @@
+# Add Use Case Workflow Configuration
+name: add-use-case
+description: "Add application service use case with orchestration logic and complete tests"
+author: "Kishen Sivalingam"
+
+# Configuration source
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+module_data_path: "{config_source}:module_data_path"
+
+# Workflow paths
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/add-use-case"
+template: false  # This is an interactive workflow
+instructions: "{installed_path}/instructions.md"
+
+# Templates
+code_templates: "{module_data_path}/templates/usecase"
+test_templates: "{module_data_path}/templates/tests"
+
+# Target project context (provided at runtime)
+target_project_path: "{{project_path}}"
+base_package: "{{base_package}}"
+
+standalone: false  # Usually invoked from Spring Architecture Agent

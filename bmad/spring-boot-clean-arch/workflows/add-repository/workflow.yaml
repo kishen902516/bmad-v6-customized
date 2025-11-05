@@ -1,0 +1,16 @@
+# Add Repository Workflow Configuration
+name: add-repository
+description: "Add data access repository with interface in domain and JPA implementation"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+module_data_path: "{config_source}:module_data_path"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/add-repository"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+target_project_path: "{{project_path}}"
+base_package: "{{base_package}}"
+
+standalone: false

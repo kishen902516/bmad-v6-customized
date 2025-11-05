@@ -1,0 +1,64 @@
+package {{base_package}}.infrastructure.adapter.persistence;
+
+import {{base_package}}.domain.entity.{{entity_name}};
+import {{base_package}}.domain.port.{{entity_name}}Repository;
+import {{base_package}}.infrastructure.adapter.persistence.entity.{{entity_name}}JpaEntity;
+import {{base_package}}.infrastructure.adapter.persistence.jpa.{{entity_name}}JpaRepository;
+import {{base_package}}.infrastructure.adapter.persistence.mapper.{{entity_name}}Mapper;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+/**
+ * JPA implementation of {{entity_name}}Repository.
+ *
+ * This adapter implements the domain repository interface using Spring Data JPA.
+ * It resides in the infrastructure layer and handles persistence details.
+ * Maps between domain entities and JPA entities to maintain Clean Architecture.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@Repository
+public class {{entity_name}}RepositoryImpl implements {{entity_name}}Repository {
+
+    private final {{entity_name}}JpaRepository jpaRepository;
+
+    public {{entity_name}}RepositoryImpl({{entity_name}}JpaRepository jpaRepository) {
+        this.jpaRepository = jpaRepository;
+    }
+
+    @Override
+    public {{entity_name}} save({{entity_name}} {{entity_name_camel}}) {
+        {{entity_name}}JpaEntity jpaEntity = {{entity_name}}Mapper.toJpa({{entity_name_camel}});
+        {{entity_name}}JpaEntity saved = jpaRepository.save(jpaEntity);
+        return {{entity_name}}Mapper.toDomain(saved);
+    }
+
+    @Override
+    public Optional<{{entity_name}}> findById({{id_type}} id) {
+        return jpaRepository.findById(id)
+                .map({{entity_name}}Mapper::toDomain);
+    }
+
+    @Override
+    public List<{{entity_name}}> findAll() {
+        return jpaRepository.findAll().stream()
+                .map({{entity_name}}Mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void deleteById({{id_type}} id) {
+        jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public boolean existsById({{id_type}} id) {
+        return jpaRepository.existsById(id);
+    }
+
+    {{custom_query_method_implementations}}
+}

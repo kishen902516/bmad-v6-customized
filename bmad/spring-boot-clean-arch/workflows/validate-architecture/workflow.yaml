@@ -1,0 +1,14 @@
+# Validate Architecture Workflow Configuration
+name: validate-architecture
+description: "Run complete ArchUnit validation suite and check architectural compliance"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/validate-architecture"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+target_project_path: "{{project_path}}"
+
+standalone: true

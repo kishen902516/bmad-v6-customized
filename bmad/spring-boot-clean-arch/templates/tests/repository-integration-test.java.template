@@ -1,0 +1,130 @@
+package {{base_package}}.infrastructure.adapter.persistence;
+
+import {{base_package}}.domain.entity.{{entity_name}};
+{{domain_imports}}
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.*;
+
+/**
+ * Integration tests for {{entity_name}}RepositoryImpl.
+ *
+ * Tests repository implementation with real database using TestContainers.
+ * Verifies CRUD operations and custom queries.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@DataJpaTest
+@Testcontainers
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import({{entity_name}}RepositoryImpl.class)
+@DisplayName("{{entity_name}} Repository Integration Tests")
+class {{entity_name}}RepositoryImplIntegrationTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @Autowired
+    private {{entity_name}}RepositoryImpl repository;
+
+    private {{entity_name}} testEntity;
+
+    @BeforeEach
+    void setUp() {
+        testEntity = {{create_test_entity}};
+    }
+
+    @Test
+    @DisplayName("Should save and retrieve {{entity_name}}")
+    void shouldSaveAndRetrieve() {
+        // When
+        {{entity_name}} saved = repository.save(testEntity);
+
+        // Then
+        assertThat(saved).isNotNull();
+        assertThat(saved.getId()).isNotNull();
+
+        // Retrieve and verify
+        Optional<{{entity_name}}> retrieved = repository.findById(saved.getId());
+        assertThat(retrieved).isPresent();
+        assertThat(retrieved.get()).isEqualTo(saved);
+    }
+
+    @Test
+    @DisplayName("Should find all {{entity_name}} entities")
+    void shouldFindAll() {
+        // Given
+        {{entity_name}} entity1 = repository.save(testEntity);
+        {{entity_name}} entity2 = repository.save({{create_another_test_entity}});
+
+        // When
+        List<{{entity_name}}> all = repository.findAll();
+
+        // Then
+        assertThat(all).hasSize(2);
+        assertThat(all).containsExactlyInAnyOrder(entity1, entity2);
+    }
+
+    @Test
+    @DisplayName("Should delete {{entity_name}} by ID")
+    void shouldDeleteById() {
+        // Given
+        {{entity_name}} saved = repository.save(testEntity);
+        {{id_type}} id = saved.getId();
+
+        // When
+        repository.deleteById(id);
+
+        // Then
+        Optional<{{entity_name}}> retrieved = repository.findById(id);
+        assertThat(retrieved).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should check if {{entity_name}} exists by ID")
+    void shouldCheckExistence() {
+        // Given
+        {{entity_name}} saved = repository.save(testEntity);
+
+        // When / Then
+        assertThat(repository.existsById(saved.getId())).isTrue();
+        assertThat(repository.existsById({{non_existent_id}})).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should return empty Optional when entity not found")
+    void shouldReturnEmptyWhenNotFound() {
+        // When
+        Optional<{{entity_name}}> retrieved = repository.findById({{non_existent_id}});
+
+        // Then
+        assertThat(retrieved).isEmpty();
+    }
+
+    {{custom_query_tests}}
+}

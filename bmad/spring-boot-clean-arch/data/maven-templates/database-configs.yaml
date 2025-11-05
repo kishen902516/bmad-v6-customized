@@ -1,0 +1,69 @@
+# Database Configuration Templates
+# Used by bootstrap-project workflow to generate appropriate configurations
+
+postgresql:
+  dependency: |
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>postgresql</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+
+  testcontainers_dependency: |
+    <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>postgresql</artifactId>
+        <version>${testcontainers.version}</version>
+        <scope>test</scope>
+    </dependency>
+
+  application_properties: |
+    spring.datasource.url=jdbc:postgresql://localhost:5432/{{database_name}}
+    spring.datasource.username=postgres
+    spring.datasource.password=postgres
+    spring.datasource.driver-class-name=org.postgresql.Driver
+
+  hibernate_dialect: org.hibernate.dialect.PostgreSQLDialect
+
+mysql:
+  dependency: |
+    <dependency>
+        <groupId>com.mysql</groupId>
+        <artifactId>mysql-connector-j</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+
+  testcontainers_dependency: |
+    <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>mysql</artifactId>
+        <version>${testcontainers.version}</version>
+        <scope>test</scope>
+    </dependency>
+
+  application_properties: |
+    spring.datasource.url=jdbc:mysql://localhost:3306/{{database_name}}
+    spring.datasource.username=root
+    spring.datasource.password=root
+    spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+  hibernate_dialect: org.hibernate.dialect.MySQLDialect
+
+h2:
+  dependency: |
+    <dependency>
+        <groupId>com.h2database</groupId>
+        <artifactId>h2</artifactId>
+        <scope>runtime</scope>
+    </dependency>
+
+  testcontainers_dependency: ""
+
+  application_properties: |
+    spring.datasource.url=jdbc:h2:mem:{{database_name}}
+    spring.datasource.username=sa
+    spring.datasource.password=
+    spring.datasource.driver-class-name=org.h2.Driver
+    spring.h2.console.enabled=true
+
+  hibernate_dialect: org.hibernate.dialect.H2Dialect

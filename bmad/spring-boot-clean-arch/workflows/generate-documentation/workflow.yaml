@@ -1,0 +1,14 @@
+# Generate Documentation Workflow Configuration
+name: generate-documentation
+description: "Auto-generate README, architecture diagrams, and API documentation"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/generate-documentation"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+target_project_path: "{{project_path}}"
+
+standalone: true

@@ -1,0 +1,92 @@
+package {{base_package}}.application.service;
+
+import {{base_package}}.application.dto.{{use_case_name}}Input;
+import {{base_package}}.application.dto.{{use_case_name}}Output;
+{{repository_imports}}
+{{domain_imports}}
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * Unit tests for {{use_case_name}}Service.
+ *
+ * Tests use case orchestration logic with mocked dependencies.
+ * Verifies business rules and interactions with repositories.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("{{use_case_name}} Use Case Tests")
+class {{use_case_name}}ServiceTest {
+
+    @Mock
+    private {{repository_name}} {{repository_name_camel}};
+
+    {{additional_mocks}}
+
+    private {{use_case_name}}Service service;
+
+    @BeforeEach
+    void setUp() {
+        service = new {{use_case_name}}Service({{constructor_args}});
+    }
+
+    @Test
+    @DisplayName("Should execute use case successfully with valid input")
+    void shouldExecuteSuccessfully() {
+        // Given
+        {{use_case_name}}Input input = {{create_valid_input}};
+        {{mock_repository_behavior}}
+
+        // When
+        {{output_type}} output = service.execute(input);
+
+        // Then
+        assertThat(output).isNotNull();
+        {{output_assertions}}
+        {{verify_repository_interactions}}
+    }
+
+    @Test
+    @DisplayName("Should throw exception when input validation fails")
+    void shouldThrowExceptionWhenInputInvalid() {
+        // Given
+        {{use_case_name}}Input invalidInput = {{create_invalid_input}};
+
+        // When / Then
+        assertThatThrownBy(() -> service.execute(invalidInput))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{expected_error_message}}");
+
+        {{verify_no_repository_calls}}
+    }
+
+    {{business_rule_tests}}
+
+    {{exception_scenario_tests}}
+
+    @Test
+    @DisplayName("Should handle repository exceptions gracefully")
+    void shouldHandleRepositoryExceptions() {
+        // Given
+        {{use_case_name}}Input input = {{create_valid_input}};
+        when({{repository_name_camel}}.{{repository_method}}(any()))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // When / Then
+        assertThatThrownBy(() -> service.execute(input))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Database error");
+    }
+}
