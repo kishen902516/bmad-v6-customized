@@ -7,7 +7,9 @@ An intelligent, interactive system for generating Spring Boot 3.x applications w
 Unlike Spring Initializr which generates basic boilerplate, this module creates fully-structured, well-architected applications with:
 
 - **Automated ArchUnit Enforcement** - Architecture violations fail the build, not just warnings
-- **Complete Test Generation** - Unit, Integration, Contract, E2E, and Architecture tests generated automatically
+- **Complete Test Generation** - Unit, Integration, Contract (Pact), E2E, and Architecture tests generated automatically
+- **Consumer-Driven Contract Testing** - Pact integration for robust microservices contract verification
+- **Enterprise Resilience Patterns** - Circuit Breaker, Retry, Bulkhead, Rate Limiter, and Time Limiter with Resilience4j
 - **Intelligent Conversational Guidance** - Claude Code Skills enable interactive generation that teaches as it builds
 - **Progressive Complexity** - From simple CRUD to complex domain-rich applications with CQRS and Event Sourcing
 - **Java 21 Optimization** - Records for Value Objects, Virtual Threads for scalability, Sealed Classes for domain modeling
@@ -43,7 +45,7 @@ During installation, you'll configure:
 **3. Test Engineer Agent**
 - Generates complete test suites across all layers
 - Unit tests (JUnit 5 + Mockito), Integration tests (TestContainers)
-- Contract tests (REST Assured), ArchUnit tests
+- Contract tests (Pact consumer-driven contracts), ArchUnit tests
 - Commands: `*generate-tests`, `*configure-archunit`, `*add-test-scenario`
 
 **4. Architecture Validator Agent**
@@ -95,9 +97,11 @@ The agent will guide you through:
 The agent generates a complete Spring Boot 3.x project with:
 - Clean Architecture layer structure
 - ArchUnit tests configured
-- Maven build configuration
+- Maven build configuration with Resilience4j
 - Database configuration
 - OpenAPI documentation
+- Resilience patterns (Circuit Breaker, Retry, Bulkhead)
+- Actuator monitoring endpoints
 - Example implementations (if selected)
 
 ### 4. Add Features Interactively
@@ -157,10 +161,12 @@ spring-boot-clean-arch/
 │   ├── entity/
 │   ├── usecase/
 │   ├── controller/
+│   ├── resilience/                   # Resilience pattern templates
 │   └── tests/
 ├── data/                             # Module data
 │   ├── maven-templates/
 │   ├── archunit-templates/
+│   ├── resilience-templates/         # Resilience4j configuration
 │   ├── examples/                     # Insurance domain examples
 │   │   ├── policy-management/
 │   │   ├── claims-processing/
@@ -266,7 +272,8 @@ To extend this module:
 - **Java:** 21
 - **Build Tool:** Maven 3.9+
 - **Architecture Testing:** ArchUnit 1.2+
-- **Testing:** JUnit 5, Mockito, TestContainers, REST Assured
+- **Testing:** JUnit 5, Mockito, TestContainers, Pact (Consumer-Driven Contracts)
+- **Resilience:** Resilience4j 2.2.0 (Circuit Breaker, Retry, Bulkhead, Rate Limiter, Time Limiter)
 - **Database:** PostgreSQL, MySQL, H2 (configurable)
 - **API Documentation:** Springdoc OpenAPI
 - **BMAD Core:** v6.0.0+
@@ -276,6 +283,8 @@ To extend this module:
 - [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) by Uncle Bob
 - [Domain-Driven Design](https://www.domainlanguage.com/ddd/) by Eric Evans
 - [ArchUnit Documentation](https://www.archunit.org/)
+- [Resilience4j Documentation](https://resilience4j.readme.io/)
+- [Pact Testing Guide](https://docs.pact.io/)
 - [Spring Boot Documentation](https://docs.spring.io/spring-boot/)
 - [Java 21 Features](https://openjdk.org/projects/jdk/21/)
 

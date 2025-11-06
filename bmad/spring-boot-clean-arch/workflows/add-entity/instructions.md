@@ -1,10 +1,11 @@
 # Add Entity Workflow Instructions
 
-<critical>This workflow adds a domain entity with complete Clean Architecture layer support and comprehensive tests</critical>
+<critical>This workflow adds a domain entity following Test-Driven Development (TDD) and Git Flow</critical>
+<critical>All code follows the Red-Green-Refactor cycle with proper git commits and GitHub issue tracking</critical>
 
 <workflow>
 
-<step n="1" goal="Identify target project">
+<step n="1" goal="Identify target project and verify git setup">
 <check if="target_project_path not provided">
   <ask>Path to your Spring Boot Clean Architecture project?</ask>
   <action>Store target_project_path</action>
@@ -17,6 +18,22 @@
 </check>
 
 <action>Validate project structure (check for Clean Architecture layers)</action>
+
+<action>Check if project has git initialized:
+- Check for .git directory
+- Verify current branch (should be 'develop' for Git Flow)
+- Check if GitHub remote is configured
+</action>
+
+<check if="not on develop branch">
+  <ask>Current branch is {current_branch}. Switch to 'develop' branch?
+  [y/n]:</ask>
+
+  <check if="yes">
+    <action>git checkout develop</action>
+    <action>git pull origin develop (if remote exists)</action>
+  </check>
+</check>
 </step>
 
 <step n="2" goal="Define entity concept">

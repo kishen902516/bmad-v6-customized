@@ -1,0 +1,107 @@
+# ArchUnit Strictness Level Rules
+# Different rules are applied based on the configured strictness level
+
+relaxed:
+  description: "Warnings only, doesn't fail build"
+  configuration: |
+    # Configure ArchUnit to only log violations, not fail tests
+    # In ArchitectureTest.java, wrap rules with:
+    # rule.because("Relaxed mode - warning only").allowEmptyShould(true);
+
+  additional_rules: ""
+
+standard:
+  description: "Recommended rules, fails on violations"
+  configuration: |
+    # Standard mode - all rules fail the build on violations
+    # This is the recommended setting for most projects
+
+  additional_rules: |
+    @Test
+    @DisplayName("DTOs: Should be Records for immutability")
+    void dtosShouldBeRecords() {
+        ArchRule rule = classes()
+                .that().resideInAPackage("..application.dto..")
+                .or().resideInAPackage("..presentation.rest.model..")
+                .and().haveSimpleNameEndingWith("Input")
+                .or().haveSimpleNameEndingWith("Output")
+                .or().haveSimpleNameEndingWith("Request")
+                .or().haveSimpleNameEndingWith("Response")
+                .should().beRecords();
+
+        rule.check(classes);
+    }
+
+strict:
+  description: "All rules enforced, zero tolerance"
+  configuration: |
+    # Strict mode - maximum enforcement
+    # All rules fail the build, no warnings
+
+  additional_rules: |
+    @Test
+    @DisplayName("DTOs: Should be Records for immutability")
+    void dtosShouldBeRecords() {
+        ArchRule rule = classes()
+                .that().resideInAPackage("..application.dto..")
+                .or().resideInAPackage("..presentation.rest.model..")
+                .should().beRecords();
+
+        rule.check(classes);
+    }
+
+    @Test
+    @DisplayName("Value Objects: Should be Records")
+    void valueObjectsShouldBeRecords() {
+        ArchRule rule = classes()
+                .that().resideInAPackage("..domain.valueobject..")
+                .should().beRecords();
+
+        rule.check(classes);
+    }
+
+    @Test
+    @DisplayName("No field injection: Use constructor injection only")
+    void noFieldInjection() {
+        ArchRule rule = noFields()
+                .should().beAnnotatedWith("org.springframework.beans.factory.annotation.Autowired")
+                .because("Field injection makes testing difficult - use constructor injection");
+
+        rule.check(classes);
+    }
+
+    @Test
+    @DisplayName("No public fields: Encapsulation should be maintained")
+    void noPublicFields() {
+        ArchRule rule = fields()
+                .that().areDeclaredInClassesThat().resideInAPackage("{{base_package}}..")
+                .and().areDeclaredInClassesThat().areNotRecords()
+                .should().notBePublic()
+                .because("Public fields break encapsulation");
+
+        rule.check(classes);
+    }
+
+    @Test
+    @DisplayName("Interfaces: Should not have 'I' prefix")
+    void interfacesShouldNotHaveIPrefix() {
+        ArchRule rule = classes()
+                .that().areInterfaces()
+                .should().haveSimpleNameNotStartingWith("I")
+                .because("Java convention is to not prefix interfaces with 'I'");
+
+        rule.check(classes);
+    }
+
+    @Test
+    @DisplayName("Logger fields: Should be private static final")
+    void loggerFieldsShouldBePrivateStaticFinal() {
+        ArchRule rule = fields()
+                .that().haveRawType("org.slf4j.Logger")
+                .should().bePrivate()
+                .andShould().beStatic()
+                .andShould().beFinal()
+                .because("Logger should be private static final");
+
+        rule.check(classes);
+    }

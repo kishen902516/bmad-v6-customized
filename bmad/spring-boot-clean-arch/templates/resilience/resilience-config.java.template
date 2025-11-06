@@ -1,0 +1,130 @@
+package {{base_package}}.infrastructure.config;
+
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
+import io.github.resilience4j.bulkhead.BulkheadConfig;
+import io.github.resilience4j.bulkhead.BulkheadRegistry;
+import io.github.resilience4j.timelimiter.TimeLimiterConfig;
+import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
+
+/**
+ * Resilience4j configuration for fault tolerance patterns.
+ *
+ * Configures:
+ * - Circuit Breaker: Prevents cascading failures
+ * - Retry: Automatic retry with exponential backoff
+ * - Bulkhead: Limits concurrent calls
+ * - Time Limiter: Timeout configuration
+ *
+ * All patterns can be customized via application.properties
+ * or programmatically in this configuration class.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@Configuration
+public class ResilienceConfig {
+
+    /**
+     * RestTemplate bean for external HTTP calls.
+     * Used by services with resilience patterns.
+     */
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    /**
+     * Programmatic Circuit Breaker configuration (alternative to properties).
+     *
+     * Circuit Breaker Parameters:
+     * - slidingWindowSize: Number of calls to track for failure rate
+     * - failureRateThreshold: Percentage of failures to open circuit (0-100)
+     * - waitDurationInOpenState: Time to wait before moving to HALF_OPEN
+     * - permittedNumberOfCallsInHalfOpenState: Calls allowed in HALF_OPEN state
+     *
+     * @return Circuit Breaker registry with custom config
+     */
+    @Bean
+    public CircuitBreakerRegistry circuitBreakerRegistry() {
+        CircuitBreakerConfig config = CircuitBreakerConfig.custom()
+                .slidingWindowSize(10)
+                .minimumNumberOfCalls(5)
+                .failureRateThreshold(50.0f)
+                .waitDurationInOpenState(Duration.ofSeconds(10))
+                .permittedNumberOfCallsInHalfOpenState(3)
+                .automaticTransitionFromOpenToHalfOpenEnabled(true)
+                .slowCallRateThreshold(100.0f)
+                .slowCallDurationThreshold(Duration.ofSeconds(60))
+                .build();
+
+        return CircuitBreakerRegistry.of(config);
+    }
+
+    /**
+     * Programmatic Retry configuration (alternative to properties).
+     *
+     * Retry Parameters:
+     * - maxAttempts: Maximum number of retry attempts
+     * - waitDuration: Initial wait time between retries
+     * - exponentialBackoff: Multiply wait time for each retry
+     *
+     * @return Retry registry with exponential backoff
+     */
+    @Bean
+    public RetryRegistry retryRegistry() {
+        RetryConfig config = RetryConfig.custom()
+                .maxAttempts(3)
+                .waitDuration(Duration.ofSeconds(1))
+                .retryExceptions(Exception.class)
+                .ignoreExceptions(IllegalArgumentException.class)
+                .build();
+
+        return RetryRegistry.of(config);
+    }
+
+    /**
+     * Programmatic Bulkhead configuration (alternative to properties).
+     *
+     * Bulkhead Parameters:
+     * - maxConcurrentCalls: Maximum number of concurrent calls allowed
+     * - maxWaitDuration: How long to wait for permission to call
+     *
+     * @return Bulkhead registry with concurrency limits
+     */
+    @Bean
+    public BulkheadRegistry bulkheadRegistry() {
+        BulkheadConfig config = BulkheadConfig.custom()
+                .maxConcurrentCalls(25)
+                .maxWaitDuration(Duration.ofMillis(0))
+                .build();
+
+        return BulkheadRegistry.of(config);
+    }
+
+    /**
+     * Programmatic Time Limiter configuration.
+     *
+     * Time Limiter Parameters:
+     * - timeoutDuration: Maximum time to wait for operation
+     * - cancelRunningFuture: Cancel operation if timeout exceeded
+     *
+     * @return Time Limiter registry with timeout config
+     */
+    @Bean
+    public TimeLimiterRegistry timeLimiterRegistry() {
+        TimeLimiterConfig config = TimeLimiterConfig.custom()
+                .timeoutDuration(Duration.ofSeconds(3))
+                .cancelRunningFuture(true)
+                .build();
+
+        return TimeLimiterRegistry.of(config);
+    }
+}

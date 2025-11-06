@@ -1,0 +1,75 @@
+package {{base_package}}.infrastructure.adapter.external.exception;
+
+/**
+ * Exception thrown when external service is unavailable.
+ *
+ * This exception is typically thrown by fallback methods
+ * when circuit breaker is OPEN or all retry attempts failed.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public class ExternalServiceUnavailableException extends RuntimeException {
+
+    /**
+     * Constructor with message.
+     *
+     * @param message the error message
+     */
+    public ExternalServiceUnavailableException(String message) {
+        super(message);
+    }
+
+    /**
+     * Constructor with message and cause.
+     *
+     * @param message the error message
+     * @param cause the underlying exception
+     */
+    public ExternalServiceUnavailableException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    /**
+     * Factory method for circuit breaker OPEN state.
+     *
+     * @param serviceName the name of the unavailable service
+     * @return exception instance
+     */
+    public static ExternalServiceUnavailableException circuitOpen(String serviceName) {
+        return new ExternalServiceUnavailableException(
+                String.format("Circuit breaker is OPEN for service: %s. " +
+                        "Service is temporarily unavailable due to high failure rate.", serviceName)
+        );
+    }
+
+    /**
+     * Factory method for retry exhausted scenario.
+     *
+     * @param serviceName the name of the service
+     * @param attempts number of retry attempts made
+     * @param cause the underlying exception
+     * @return exception instance
+     */
+    public static ExternalServiceUnavailableException retryExhausted(
+            String serviceName, int attempts, Throwable cause) {
+        return new ExternalServiceUnavailableException(
+                String.format("Service %s unavailable after %d retry attempts",
+                        serviceName, attempts),
+                cause
+        );
+    }
+
+    /**
+     * Factory method for bulkhead full scenario.
+     *
+     * @param serviceName the name of the service
+     * @return exception instance
+     */
+    public static ExternalServiceUnavailableException bulkheadFull(String serviceName) {
+        return new ExternalServiceUnavailableException(
+                String.format("Too many concurrent calls to %s. " +
+                        "Bulkhead is full, please try again later.", serviceName)
+        );
+    }
+}
