@@ -1,0 +1,134 @@
+package {{base_package}}.presentation.rest;
+
+import {{base_package}}.application.usecase.{{use_case_name}}UseCase;
+import {{base_package}}.application.dto.{{use_case_name}}Input;
+import {{base_package}}.application.dto.{{use_case_name}}Output;
+import {{base_package}}.presentation.rest.model.{{entity_name}}Request;
+import {{base_package}}.presentation.rest.model.{{entity_name}}Response;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+/**
+ * Contract tests for {{entity_name}}Controller.
+ *
+ * Tests HTTP endpoints with mocked use cases.
+ * Verifies request/response contracts, status codes, and validation.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@WebMvcTest({{entity_name}}Controller.class)
+@DisplayName("{{entity_name}} Controller Contract Tests")
+class {{entity_name}}ControllerContractTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private {{use_case_name}}UseCase {{use_case_name_camel}};
+
+    {{additional_use_case_mocks}}
+
+    @Test
+    @DisplayName("POST {{endpoint_path}} - Should create {{entity_name}} and return 201")
+    void shouldCreate{{entity_name}}() throws Exception {
+        // Given
+        {{entity_name}}Request request = {{create_valid_request}};
+        {{use_case_name}}Output output = {{create_expected_output}};
+        when({{use_case_name_camel}}.execute(any({{use_case_name}}Input.class)))
+                .thenReturn(output);
+
+        // When / Then
+        mockMvc.perform(post("{{endpoint_path}}")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.{{id_field}}").exists())
+                {{response_field_assertions}};
+
+        verify({{use_case_name_camel}}).execute(any({{use_case_name}}Input.class));
+    }
+
+    @Test
+    @DisplayName("POST {{endpoint_path}} - Should return 400 when validation fails")
+    void shouldReturn400WhenValidationFails() throws Exception {
+        // Given
+        {{entity_name}}Request invalidRequest = {{create_invalid_request}};
+
+        // When / Then
+        mockMvc.perform(post("{{endpoint_path}}")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation failed"));
+
+        verifyNoInteractions({{use_case_name_camel}});
+    }
+
+    @Test
+    @DisplayName("GET {{endpoint_path}}/{id} - Should retrieve {{entity_name}} and return 200")
+    void shouldRetrieve{{entity_name}}ById() throws Exception {
+        // Given
+        {{id_type}} id = {{test_id}};
+        {{use_case_name}}Output output = {{create_expected_output}};
+        when({{use_case_name_camel}}.execute(any()))
+                .thenReturn(output);
+
+        // When / Then
+        mockMvc.perform(get("{{endpoint_path}}/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.{{id_field}}").value(id))
+                {{response_field_assertions}};
+    }
+
+    @Test
+    @DisplayName("GET {{endpoint_path}}/{id} - Should return 404 when entity not found")
+    void shouldReturn404WhenEntityNotFound() throws Exception {
+        // Given
+        {{id_type}} id = {{non_existent_id}};
+        when({{use_case_name_camel}}.execute(any()))
+                .thenThrow(new EntityNotFoundException("{{entity_name}} not found"));
+
+        // When / Then
+        mockMvc.perform(get("{{endpoint_path}}/{id}", id))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Resource not found"));
+    }
+
+    {{additional_endpoint_tests}}
+
+    @Test
+    @DisplayName("Should return 500 when internal error occurs")
+    void shouldReturn500OnInternalError() throws Exception {
+        // Given
+        {{entity_name}}Request request = {{create_valid_request}};
+        when({{use_case_name_camel}}.execute(any()))
+                .thenThrow(new RuntimeException("Internal error"));
+
+        // When / Then
+        mockMvc.perform(post("{{endpoint_path}}")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.error").value("Internal server error"));
+    }
+}
