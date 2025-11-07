@@ -1,0 +1,464 @@
+package {{base_package}}.domain.service;
+
+import {{base_package}}.domain.valueobject.*;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+// ==================== UnderwritingRulesEngine (Domain Service) ====================
+
+/**
+ * UnderwritingRulesEngine - Domain Service
+ *
+ * Encapsulates the business logic for assessing insurance application risk.
+ * This is a Domain Service because:
+ * - The logic doesn't naturally belong to Application entity
+ * - It involves calculations based on multiple value objects
+ * - It represents a core business process (risk assessment)
+ * - It's stateless and has no infrastructure dependencies
+ *
+ * Lives in: domain/service/ (domain layer)
+ *
+ * @author Spring Boot Clean Architecture Generator
+ */
+public class UnderwritingRulesEngine {
+
+    // Risk score thresholds
+    private static final int LOW_RISK_THRESHOLD = 25;
+    private static final int MEDIUM_RISK_THRESHOLD = 50;
+    private static final int HIGH_RISK_THRESHOLD = 75;
+
+    /**
+     * Assess the risk for an insurance application
+     *
+     * @param applicantDetails Details about the applicant
+     * @param coverageRequest Details about the requested coverage
+     * @return Complete risk assessment with score, factors, and recommendation
+     */
+    public RiskAssessment assessRisk(
+            ApplicantDetails applicantDetails,
+            CoverageRequest coverageRequest) {
+
+        int totalRiskScore = 0;
+        List<String> contributingFactors = new ArrayList<>();
+
+        // Apply age factor
+        int ageFactor = calculateAgeFactor(applicantDetails.age());
+        totalRiskScore += ageFactor;
+        if (ageFactor > 0) {
+            contributingFactors.add(String.format("Age (%d years): +%d points",
+                applicantDetails.age(), ageFactor));
+        }
+
+        // Apply occupation factor
+        int occupationFactor = calculateOccupationFactor(applicantDetails.occupation());
+        totalRiskScore += occupationFactor;
+        if (occupationFactor > 0) {
+            contributingFactors.add(String.format("Occupation (%s): +%d points",
+                applicantDetails.occupation(), occupationFactor));
+        }
+
+        // Apply health status factor
+        int healthFactor = calculateHealthFactor(applicantDetails.healthStatus());
+        totalRiskScore += healthFactor;
+        if (healthFactor > 0) {
+            contributingFactors.add(String.format("Health Status (%s): +%d points",
+                applicantDetails.healthStatus(), healthFactor));
+        }
+
+        // Apply coverage amount factor
+        int coverageFactor = calculateCoverageFactor(coverageRequest.amount());
+        totalRiskScore += coverageFactor;
+        if (coverageFactor > 0) {
+            contributingFactors.add(String.format("Coverage Amount (%s): +%d points",
+                coverageRequest.amount(), coverageFactor));
+        }
+
+        // Apply term length factor
+        int termFactor = calculateTermFactor(coverageRequest.termYears());
+        totalRiskScore += termFactor;
+        if (termFactor > 0) {
+            contributingFactors.add(String.format("Term Length (%d years): +%d points",
+                coverageRequest.termYears(), termFactor));
+        }
+
+        // Create risk score
+        RiskScore riskScore = new RiskScore(Math.min(totalRiskScore, 100)); // Cap at 100
+
+        // Determine recommendation
+        UnderwritingRecommendation recommendation = determineRecommendation(riskScore);
+
+        return new RiskAssessment(riskScore, contributingFactors, recommendation);
+    }
+
+    /**
+     * Calculate risk factor based on applicant age
+     *
+     * Age Ranges:
+     * - Under 25: +15 points (inexperienced, higher accident risk)
+     * - 25-40: +5 points (prime age, lower risk)
+     * - 41-60: +10 points (moderate risk)
+     * - Over 60: +20 points (higher health risks)
+     */
+    private int calculateAgeFactor(int age) {
+        if (age < 25) {
+            return 15;
+        } else if (age <= 40) {
+            return 5;
+        } else if (age <= 60) {
+            return 10;
+        } else {
+            return 20;
+        }
+    }
+
+    /**
+     * Calculate risk factor based on occupation
+     *
+     * Occupation Risk Categories:
+     * - Low risk (office worker, teacher, accountant): +0 points
+     * - Medium risk (nurse, electrician, mechanic): +10 points
+     * - High risk (construction, pilot, firefighter): +25 points
+     */
+    private int calculateOccupationFactor(String occupation) {
+        String occupationLower = occupation.toLowerCase();
+
+        // High-risk occupations
+        List<String> highRiskOccupations = List.of(
+            "construction", "pilot", "firefighter", "police", "miner", "logger"
+        );
+        for (String highRisk : highRiskOccupations) {
+            if (occupationLower.contains(highRisk)) {
+                return 25;
+            }
+        }
+
+        // Medium-risk occupations
+        List<String> mediumRiskOccupations = List.of(
+            "nurse", "electrician", "mechanic", "truck driver", "security"
+        );
+        for (String mediumRisk : mediumRiskOccupations) {
+            if (occupationLower.contains(mediumRisk)) {
+                return 10;
+            }
+        }
+
+        // Default: low risk (office jobs, etc.)
+        return 0;
+    }
+
+    /**
+     * Calculate risk factor based on health status
+     *
+     * Health Status Risk:
+     * - Excellent: +0 points
+     * - Good: +5 points
+     * - Fair: +15 points
+     * - Poor: +30 points
+     */
+    private int calculateHealthFactor(String healthStatus) {
+        return switch (healthStatus) {
+            case "Excellent" -> 0;
+            case "Good" -> 5;
+            case "Fair" -> 15;
+            case "Poor" -> 30;
+            default -> 0;
+        };
+    }
+
+    /**
+     * Calculate risk factor based on coverage amount
+     *
+     * Coverage Amount Risk:
+     * - Under $100K: +5 points
+     * - $100K - $500K: +10 points
+     * - Over $500K: +20 points
+     */
+    private int calculateCoverageFactor(Money coverageAmount) {
+        BigDecimal amount = coverageAmount.amount();
+
+        if (amount.compareTo(BigDecimal.valueOf(100_000)) < 0) {
+            return 5;
+        } else if (amount.compareTo(BigDecimal.valueOf(500_000)) <= 0) {
+            return 10;
+        } else {
+            return 20;
+        }
+    }
+
+    /**
+     * Calculate risk factor based on term length
+     *
+     * Term Length Risk:
+     * - 10 years or less: +5 points
+     * - 11-20 years: +10 points
+     * - Over 20 years: +15 points
+     */
+    private int calculateTermFactor(int termYears) {
+        if (termYears <= 10) {
+            return 5;
+        } else if (termYears <= 20) {
+            return 10;
+        } else {
+            return 15;
+        }
+    }
+
+    /**
+     * Determine the underwriting recommendation based on risk score
+     *
+     * Recommendation Logic:
+     * - 0-25: Low Risk → Auto-approve
+     * - 26-75: Medium/High Risk → Manual review required
+     * - 76+: Very High Risk → Auto-reject
+     */
+    private UnderwritingRecommendation determineRecommendation(RiskScore riskScore) {
+        if (riskScore.value() <= LOW_RISK_THRESHOLD) {
+            return UnderwritingRecommendation.AUTO_APPROVE;
+        } else if (riskScore.value() <= HIGH_RISK_THRESHOLD) {
+            return UnderwritingRecommendation.MANUAL_REVIEW_REQUIRED;
+        } else {
+            return UnderwritingRecommendation.AUTO_REJECT;
+        }
+    }
+
+    /**
+     * Calculate recommended premium based on base rate and risk score
+     * This could be another domain service: PremiumCalculationService
+     *
+     * Formula: basePremium * (1 + riskScore / 100)
+     */
+    public Money calculatePremium(Money basePremium, RiskScore riskScore) {
+        double riskMultiplier = 1.0 + (riskScore.value() / 100.0);
+        return basePremium.multiply(riskMultiplier);
+    }
+}
+
+// ==================== Use Cases ====================
+
+package {{base_package}}.application.service;
+
+import {{base_package}}.domain.entity.Application;
+import {{base_package}}.domain.port.ApplicationRepository;
+import {{base_package}}.domain.service.UnderwritingRulesEngine;
+import {{base_package}}.domain.valueobject.*;
+import {{base_package}}.application.usecase.SubmitApplicationUseCase;
+import {{base_package}}.application.usecase.AssessRiskUseCase;
+import {{base_package}}.application.usecase.ApproveApplicationUseCase;
+import {{base_package}}.application.dto.*;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
+
+// ==================== SubmitApplicationUseCase ====================
+
+/**
+ * Submit Application Use Case Implementation
+ *
+ * Creates and submits a new insurance application for underwriting
+ */
+@Service
+@Transactional
+public class SubmitApplicationService implements SubmitApplicationUseCase {
+
+    private static final Logger logger = LoggerFactory.getLogger(SubmitApplicationService.class);
+    private final ApplicationRepository applicationRepository;
+
+    public SubmitApplicationService(ApplicationRepository applicationRepository) {
+        this.applicationRepository = Objects.requireNonNull(applicationRepository);
+    }
+
+    @Override
+    public SubmitApplicationOutput execute(SubmitApplicationInput input) {
+        logger.info("Submitting application for applicant: {}", input.applicantDetails().name());
+
+        // Create new application
+        Application application = new Application(
+            input.applicantDetails(),
+            input.coverageRequest()
+        );
+
+        // Submit the application (DRAFT → SUBMITTED)
+        application.submit();
+
+        // Persist
+        Application savedApplication = applicationRepository.save(application);
+
+        logger.info("Application submitted: {}", savedApplication.getApplicationNumber());
+
+        return new SubmitApplicationOutput(
+            savedApplication.getApplicationNumber(),
+            savedApplication.getStatus(),
+            savedApplication.getSubmittedAt()
+        );
+    }
+}
+
+// ==================== AssessRiskUseCase ====================
+
+/**
+ * Assess Risk Use Case Implementation
+ *
+ * Performs automated risk assessment using UnderwritingRulesEngine domain service
+ * This demonstrates how use cases orchestrate domain services and entities
+ */
+@Service
+@Transactional
+public class AssessRiskService implements AssessRiskUseCase {
+
+    private static final Logger logger = LoggerFactory.getLogger(AssessRiskService.class);
+    private final ApplicationRepository applicationRepository;
+    private final UnderwritingRulesEngine underwritingRulesEngine;
+
+    public AssessRiskService(
+            ApplicationRepository applicationRepository,
+            UnderwritingRulesEngine underwritingRulesEngine) {
+        this.applicationRepository = Objects.requireNonNull(applicationRepository);
+        this.underwritingRulesEngine = Objects.requireNonNull(underwritingRulesEngine);
+    }
+
+    @Override
+    public AssessRiskOutput execute(AssessRiskInput input) {
+        logger.info("Assessing risk for application: {}", input.applicationNumber());
+
+        // Retrieve application
+        Application application = applicationRepository.findByApplicationNumber(input.applicationNumber())
+            .orElseThrow(() -> new ApplicationNotFoundException(
+                "Application not found: " + input.applicationNumber()
+            ));
+
+        // Ensure application can be assessed
+        if (!application.canBeAssessed()) {
+            throw new InvalidApplicationStateException(
+                String.format("Application %s cannot be assessed in status %s",
+                    application.getApplicationNumber(), application.getStatus())
+            );
+        }
+
+        // Use domain service to assess risk
+        RiskAssessment riskAssessment = underwritingRulesEngine.assessRisk(
+            application.getApplicantDetails(),
+            application.getCoverageRequest()
+        );
+
+        // Record assessment in application entity (SUBMITTED → UNDER_ASSESSMENT)
+        application.recordRiskAssessment(riskAssessment);
+
+        // Update in repository
+        Application updatedApplication = applicationRepository.save(application);
+
+        logger.info("Risk assessment complete: {} - Score: {}, Recommendation: {}",
+            application.getApplicationNumber(),
+            riskAssessment.riskScore(),
+            riskAssessment.recommendation());
+
+        return new AssessRiskOutput(
+            updatedApplication.getApplicationNumber(),
+            updatedApplication.getStatus(),
+            riskAssessment,
+            updatedApplication.getAssessedAt()
+        );
+    }
+}
+
+// ==================== ApproveApplicationUseCase ====================
+
+/**
+ * Approve Application Use Case Implementation
+ *
+ * Approves an application with a premium quote after risk assessment
+ */
+@Service
+@Transactional
+public class ApproveApplicationService implements ApproveApplicationUseCase {
+
+    private static final Logger logger = LoggerFactory.getLogger(ApproveApplicationService.class);
+    private final ApplicationRepository applicationRepository;
+
+    public ApproveApplicationService(ApplicationRepository applicationRepository) {
+        this.applicationRepository = Objects.requireNonNull(applicationRepository);
+    }
+
+    @Override
+    public ApproveApplicationOutput execute(ApproveApplicationInput input) {
+        logger.info("Approving application: {}", input.applicationNumber());
+
+        // Retrieve application
+        Application application = applicationRepository.findByApplicationNumber(input.applicationNumber())
+            .orElseThrow(() -> new ApplicationNotFoundException(
+                "Application not found: " + input.applicationNumber()
+            ));
+
+        // Ensure application can be decided
+        if (!application.canBeDecided()) {
+            throw new InvalidApplicationStateException(
+                String.format("Application %s cannot be approved in status %s",
+                    application.getApplicationNumber(), application.getStatus())
+            );
+        }
+
+        // Approve the application (UNDER_ASSESSMENT → APPROVED)
+        application.approve(
+            input.quotedPremium(),
+            input.approvalReason(),
+            input.approvedBy()
+        );
+
+        // Update in repository
+        Application approvedApplication = applicationRepository.save(application);
+
+        logger.info("Application approved: {} - Premium: {}/year",
+            application.getApplicationNumber(),
+            input.quotedPremium());
+
+        return new ApproveApplicationOutput(
+            approvedApplication.getApplicationNumber(),
+            approvedApplication.getStatus(),
+            approvedApplication.getQuotedPremium(),
+            approvedApplication.getDecidedAt()
+        );
+    }
+}
+
+// ==================== DTOs ====================
+
+public record SubmitApplicationInput(
+    ApplicantDetails applicantDetails,
+    CoverageRequest coverageRequest
+) {}
+
+public record SubmitApplicationOutput(
+    ApplicationNumber applicationNumber,
+    ApplicationStatus status,
+    java.time.LocalDateTime submittedAt
+) {}
+
+public record AssessRiskInput(
+    ApplicationNumber applicationNumber
+) {}
+
+public record AssessRiskOutput(
+    ApplicationNumber applicationNumber,
+    ApplicationStatus status,
+    RiskAssessment riskAssessment,
+    java.time.LocalDateTime assessedAt
+) {}
+
+public record ApproveApplicationInput(
+    ApplicationNumber applicationNumber,
+    Money quotedPremium,
+    String approvalReason,
+    String approvedBy
+) {}
+
+public record ApproveApplicationOutput(
+    ApplicationNumber applicationNumber,
+    ApplicationStatus status,
+    Money quotedPremium,
+    java.time.LocalDateTime decidedAt
+) {}

@@ -1,0 +1,448 @@
+package {{base_package}}.domain.valueobject;
+
+import java.math.BigDecimal;
+import java.time.Year;
+import java.util.List;
+import java.util.Objects;
+
+// ==================== ApplicationNumber ====================
+
+/**
+ * ApplicationNumber Value Object
+ *
+ * Unique identifier for insurance applications
+ * Format: APP-YYYY-NNNNNN (e.g., APP-2024-000456)
+ *
+ * Immutable using Java 21 Record
+ */
+public record ApplicationNumber(String value) {
+
+    private static final String PREFIX = "APP";
+    private static final String PATTERN = "^APP-\\d{4}-\\d{6}$";
+    private static int sequence = 0;
+
+    public ApplicationNumber {
+        Objects.requireNonNull(value, "Application number cannot be null");
+        if (!value.matches(PATTERN)) {
+            throw new IllegalArgumentException(
+                "Invalid application number format. Expected: APP-YYYY-NNNNNN, got: " + value
+            );
+        }
+    }
+
+    /**
+     * Generate a new application number with current year
+     */
+    public static ApplicationNumber generate() {
+        int year = Year.now().getValue();
+        sequence++;
+        String formattedSequence = String.format("%06d", sequence);
+        return new ApplicationNumber(String.format("%s-%d-%s", PREFIX, year, formattedSequence));
+    }
+
+    /**
+     * Create from string value
+     */
+    public static ApplicationNumber of(String value) {
+        return new ApplicationNumber(value);
+    }
+
+    @Override
+    public String toString() {
+        return value;
+    }
+}
+
+// ==================== ApplicationStatus ====================
+
+/**
+ * ApplicationStatus Enum
+ *
+ * Represents the lifecycle states of an insurance application
+ *
+ * State Transitions:
+ * DRAFT → SUBMITTED → UNDER_ASSESSMENT → APPROVED/REJECTED → ACTIVE
+ */
+public enum ApplicationStatus {
+    /**
+     * Application created but not yet submitted
+     */
+    DRAFT("Draft"),
+
+    /**
+     * Application submitted for underwriting
+     */
+    SUBMITTED("Submitted"),
+
+    /**
+     * Application under risk assessment
+     */
+    UNDER_ASSESSMENT("Under Assessment"),
+
+    /**
+     * Application approved, awaiting payment
+     */
+    APPROVED("Approved"),
+
+    /**
+     * Application rejected
+     */
+    REJECTED("Rejected"),
+
+    /**
+     * Application active (payment received, policy issued)
+     */
+    ACTIVE("Active");
+
+    private final String displayName;
+
+    ApplicationStatus(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    /**
+     * Check if this is a final status (no further transitions)
+     */
+    public boolean isFinal() {
+        return this == REJECTED || this == ACTIVE;
+    }
+
+    /**
+     * Check if this status allows editing
+     */
+    public boolean allowsEditing() {
+        return this == DRAFT;
+    }
+}
+
+// ==================== ApplicantDetails ====================
+
+/**
+ * ApplicantDetails Value Object
+ *
+ * Contains information about the insurance applicant
+ *
+ * Immutable using Java 21 Record
+ */
+public record ApplicantDetails(
+        String name,
+        int age,
+        String occupation,
+        String healthStatus) {
+
+    public ApplicantDetails {
+        Objects.requireNonNull(name, "Applicant name is required");
+        Objects.requireNonNull(occupation, "Occupation is required");
+        Objects.requireNonNull(healthStatus, "Health status is required");
+
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("Applicant name cannot be blank");
+        }
+
+        if (age < 0 || age > 120) {
+            throw new IllegalArgumentException("Invalid age: " + age);
+        }
+
+        if (occupation.isBlank()) {
+            throw new IllegalArgumentException("Occupation cannot be blank");
+        }
+
+        // Validate health status is one of: Excellent, Good, Fair, Poor
+        List<String> validHealthStatuses = List.of("Excellent", "Good", "Fair", "Poor");
+        if (!validHealthStatuses.contains(healthStatus)) {
+            throw new IllegalArgumentException(
+                "Invalid health status. Must be one of: " + validHealthStatuses
+            );
+        }
+    }
+
+    /**
+     * Check if applicant is in high-risk age group (under 25 or over 60)
+     */
+    public boolean isHighRiskAge() {
+        return age < 25 || age > 60;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s, Age %d, %s", name, age, occupation);
+    }
+}
+
+// ==================== CoverageRequest ====================
+
+/**
+ * CoverageRequest Value Object
+ *
+ * Represents the insurance coverage being requested
+ *
+ * Immutable using Java 21 Record
+ */
+public record CoverageRequest(
+        String coverageType,
+        Money amount,
+        int termYears) {
+
+    public CoverageRequest {
+        Objects.requireNonNull(coverageType, "Coverage type is required");
+        Objects.requireNonNull(amount, "Coverage amount is required");
+
+        if (coverageType.isBlank()) {
+            throw new IllegalArgumentException("Coverage type cannot be blank");
+        }
+
+        if (termYears <= 0 || termYears > 50) {
+            throw new IllegalArgumentException("Term years must be between 1 and 50");
+        }
+    }
+
+    /**
+     * Check if this is a high-value coverage request (over $500K)
+     */
+    public boolean isHighValue() {
+        return amount.amount().compareTo(BigDecimal.valueOf(500_000)) > 0;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s: %s for %d years", coverageType, amount, termYears);
+    }
+}
+
+// ==================== RiskScore ====================
+
+/**
+ * RiskScore Value Object
+ *
+ * Represents a numerical risk score from 0-100
+ * Higher scores indicate higher risk
+ *
+ * Immutable using Java 21 Record
+ */
+public record RiskScore(int value) {
+
+    private static final int MIN_SCORE = 0;
+    private static final int MAX_SCORE = 100;
+
+    public RiskScore {
+        if (value < MIN_SCORE || value > MAX_SCORE) {
+            throw new IllegalArgumentException(
+                String.format("Risk score must be between %d and %d. Got: %d",
+                    MIN_SCORE, MAX_SCORE, value)
+            );
+        }
+    }
+
+    /**
+     * Get the risk level category
+     */
+    public RiskLevel getRiskLevel() {
+        if (value <= 25) {
+            return RiskLevel.LOW;
+        } else if (value <= 50) {
+            return RiskLevel.MEDIUM;
+        } else if (value <= 75) {
+            return RiskLevel.HIGH;
+        } else {
+            return RiskLevel.VERY_HIGH;
+        }
+    }
+
+    /**
+     * Check if this is a low risk score (eligible for auto-approval)
+     */
+    public boolean isLowRisk() {
+        return value <= 25;
+    }
+
+    /**
+     * Check if this is a very high risk score (eligible for auto-rejection)
+     */
+    public boolean isVeryHighRisk() {
+        return value > 75;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%d (%s)", value, getRiskLevel());
+    }
+}
+
+// ==================== RiskLevel ====================
+
+/**
+ * RiskLevel Enum
+ *
+ * Categories of risk levels
+ */
+public enum RiskLevel {
+    LOW("Low Risk", "0-25"),
+    MEDIUM("Medium Risk", "26-50"),
+    HIGH("High Risk", "51-75"),
+    VERY_HIGH("Very High Risk", "76-100");
+
+    private final String displayName;
+    private final String range;
+
+    RiskLevel(String displayName, String range) {
+        this.displayName = displayName;
+        this.range = range;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public String getRange() {
+        return range;
+    }
+}
+
+// ==================== UnderwritingRecommendation ====================
+
+/**
+ * UnderwritingRecommendation Enum
+ *
+ * Recommendation from the underwriting rules engine
+ */
+public enum UnderwritingRecommendation {
+    AUTO_APPROVE("Auto-approve - Low risk"),
+    MANUAL_REVIEW_REQUIRED("Manual review required - Medium/High risk"),
+    AUTO_REJECT("Auto-reject - Very high risk");
+
+    private final String description;
+
+    UnderwritingRecommendation(String description) {
+        this.description = description;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+}
+
+// ==================== RiskAssessment ====================
+
+/**
+ * RiskAssessment Value Object
+ *
+ * Complete risk assessment result from the UnderwritingRulesEngine
+ * Contains risk score, contributing factors, and recommendation
+ *
+ * Immutable using Java 21 Record
+ */
+public record RiskAssessment(
+        RiskScore riskScore,
+        List<String> contributingFactors,
+        UnderwritingRecommendation recommendation) {
+
+    public RiskAssessment {
+        Objects.requireNonNull(riskScore, "Risk score is required");
+        Objects.requireNonNull(contributingFactors, "Contributing factors are required");
+        Objects.requireNonNull(recommendation, "Recommendation is required");
+
+        // Make defensive copy of list
+        contributingFactors = List.copyOf(contributingFactors);
+    }
+
+    /**
+     * Check if manual review is required
+     */
+    public boolean requiresManualReview() {
+        return recommendation == UnderwritingRecommendation.MANUAL_REVIEW_REQUIRED;
+    }
+
+    /**
+     * Check if auto-approval is recommended
+     */
+    public boolean isAutoApprovalRecommended() {
+        return recommendation == UnderwritingRecommendation.AUTO_APPROVE;
+    }
+
+    /**
+     * Check if auto-rejection is recommended
+     */
+    public boolean isAutoRejectionRecommended() {
+        return recommendation == UnderwritingRecommendation.AUTO_REJECT;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Risk Assessment: Score=%s, Recommendation=%s, Factors=%d",
+            riskScore, recommendation, contributingFactors.size());
+    }
+}
+
+// ==================== Money ====================
+
+/**
+ * Money Value Object
+ *
+ * Represents a monetary amount with currency
+ * Used across multiple insurance domains
+ *
+ * Immutable using Java 21 Record
+ */
+public record Money(BigDecimal amount, String currency) {
+
+    public Money {
+        Objects.requireNonNull(amount, "Amount cannot be null");
+        Objects.requireNonNull(currency, "Currency cannot be null");
+
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Amount cannot be negative");
+        }
+
+        if (currency.length() != 3) {
+            throw new IllegalArgumentException("Currency must be 3-letter ISO code (e.g., USD, EUR)");
+        }
+    }
+
+    /**
+     * Create money from double value
+     */
+    public static Money of(double amount, String currency) {
+        return new Money(BigDecimal.valueOf(amount), currency);
+    }
+
+    /**
+     * Add two money amounts (must have same currency)
+     */
+    public Money add(Money other) {
+        ensureSameCurrency(other);
+        return new Money(this.amount.add(other.amount), this.currency);
+    }
+
+    /**
+     * Multiply amount by a factor
+     */
+    public Money multiply(double factor) {
+        return new Money(this.amount.multiply(BigDecimal.valueOf(factor)), this.currency);
+    }
+
+    /**
+     * Check if this amount is greater than another
+     */
+    public boolean isGreaterThan(Money other) {
+        ensureSameCurrency(other);
+        return this.amount.compareTo(other.amount) > 0;
+    }
+
+    private void ensureSameCurrency(Money other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new IllegalArgumentException(
+                String.format("Cannot operate on amounts with different currencies: %s and %s",
+                    this.currency, other.currency)
+            );
+        }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s %.2f", currency, amount);
+    }
+}

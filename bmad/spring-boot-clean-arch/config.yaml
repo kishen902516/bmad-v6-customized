@@ -12,3 +12,15 @@ output_folder: '{project-root}/docs'
 module_data_path: '{project-root}/bmad/spring-boot-clean-arch/data'
 module_templates_path: '{project-root}/bmad/spring-boot-clean-arch/templates'
 module_agents_path: '{project-root}/bmad/spring-boot-clean-arch/agents'
+
+# Project Generation Settings
+projects_output_path: '{project-root}/generated-projects'
+default_scenario: 'enterprise'
+include_examples: 'yes'
+archunit_strictness: 'standard'
+
+# Default Database
+default_database: 'postgresql'
+
+# Module Version
+module_version: '1.0.0'
