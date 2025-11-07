@@ -9,7 +9,9 @@
       "Bash(done)",
       "Bash(cat:*)",
       "Bash(mvn test:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(mvn clean test:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

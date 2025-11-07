@@ -1,0 +1,145 @@
+@startuml Insurance Policy Service - Layer Diagram
+
+!define ICONURL https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v2.4.0
+!includeurl ICONURL/common.puml
+
+title Insurance Policy Service - Clean Architecture Layers
+
+skinparam backgroundColor #FEFEFE
+skinparam packageStyle rectangle
+skinparam package {
+    BackgroundColor<<presentation>> #E3F2FD
+    BackgroundColor<<application>> #FFF3E0
+    BackgroundColor<<domain>> #E8F5E9
+    BackgroundColor<<infrastructure>> #F3E5F5
+    BorderColor #666666
+    FontSize 13
+    FontStyle bold
+}
+
+package "Presentation Layer" <<presentation>> {
+    [REST Controllers] as Controllers
+    [Request/Response Models] as Models
+    [Exception Handlers] as ExHandlers
+    [OpenAPI Documentation] as OpenAPI
+}
+
+package "Application Layer" <<application>> {
+    [Use Cases (Services)] as UseCases
+    [Application DTOs] as DTOs
+    [Application Exceptions] as AppExceptions
+}
+
+package "Domain Layer" <<domain>> {
+    package "Core Business Logic" {
+        [Entities] as Entities
+        [Value Objects] as ValueObjects
+        [Repository Interfaces (Ports)] as Ports
+        [Domain Services] as DomainServices
+        [Business Rules] as Rules
+    }
+}
+
+package "Infrastructure Layer" <<infrastructure>> {
+    [Repository Adapters] as Adapters
+    [JPA Entities] as JPA
+    [Mappers] as Mappers
+    [Spring Data Repositories] as SpringData
+    [Configuration] as Config
+    database "PostgreSQL\nDatabase" as DB
+}
+
+' Dependencies (always pointing inward to domain)
+Controllers -down-> UseCases : depends on
+Controllers -down-> Models : uses
+
+UseCases -down-> Ports : depends on
+UseCases -down-> Entities : uses
+UseCases -down-> DTOs : uses
+
+Adapters -up-> Ports : implements
+Adapters -down-> JPA : uses
+Adapters -down-> Mappers : uses
+Adapters -down-> SpringData : uses
+
+SpringData -down-> DB : persists to
+
+ExHandlers -down-> AppExceptions : handles
+
+note as DependencyRule
+  **The Dependency Rule**
+
+  Source code dependencies must point
+  only inward, toward higher-level policies.
+
+  ✓ Infrastructure → Application → Domain
+  ✓ Presentation → Application → Domain
+  ✗ Domain → Application (NEVER)
+  ✗ Domain → Infrastructure (NEVER)
+  ✗ Application → Infrastructure (NEVER)
+end note
+
+note right of Entities
+  **Domain Layer**
+  - Pure Java (no frameworks)
+  - Business logic only
+  - No external dependencies
+  - Highly testable
+
+  Examples:
+  - Policy.java
+  - Claim.java
+  - Payment.java
+end note
+
+note right of UseCases
+  **Application Layer**
+  - Orchestrates domain objects
+  - Implements use cases
+  - @Transactional boundaries
+  - Depends on domain ports
+
+  Examples:
+  - CreatePolicyService
+  - SubmitClaimService
+  - ProcessPaymentService
+end note
+
+note right of Controllers
+  **Presentation Layer**
+  - Thin controllers
+  - HTTP concerns only
+  - Input validation
+  - OpenAPI annotations
+
+  Examples:
+  - PolicyController
+  - ClaimController
+  - PaymentController
+end note
+
+note right of Adapters
+  **Infrastructure Layer**
+  - Technical implementations
+  - JPA repositories
+  - Database adapters
+  - External services
+
+  Examples:
+  - PolicyRepositoryAdapter
+  - ClaimRepositoryAdapter
+end note
+
+legend left
+  |= Symbol |= Meaning |
+  | → | Direct dependency |
+  | ⇢ | Implements interface |
+
+  |= Color |= Layer |
+  |<#E3F2FD>| Presentation |
+  |<#FFF3E0>| Application |
+  |<#E8F5E9>| Domain (Core) |
+  |<#F3E5F5>| Infrastructure |
+endlegend
+
+@enduml

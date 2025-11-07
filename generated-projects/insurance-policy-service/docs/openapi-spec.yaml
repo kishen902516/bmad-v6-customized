@@ -1,0 +1,625 @@
+openapi: 3.0.3
+info:
+  title: Insurance Policy Service API
+  description: |
+    RESTful API for managing insurance policies, claims, and payments.
+
+    This service follows Clean Architecture principles with:
+    - Domain-driven design
+    - Repository pattern
+    - Use case driven development
+    - ArchUnit enforcement
+
+    ## Features
+    - Policy creation and management
+    - Claims submission and processing
+    - Payment processing
+    - Customer management
+
+    ## Architecture
+    Built with Spring Boot 3.2, Java 21, and PostgreSQL.
+
+  version: 0.0.1-SNAPSHOT
+  contact:
+    name: Insurance Policy Service Team
+    email: support@insurance.example.com
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.insurance.example.com
+    description: Production server
+
+tags:
+  - name: Policy Management
+    description: APIs for managing insurance policies
+  - name: Claims
+    description: Insurance claim management APIs
+  - name: Payments
+    description: Payment processing and management APIs
+  - name: Health
+    description: Health check and monitoring endpoints
+
+paths:
+  /api/v1/policies:
+    post:
+      tags:
+        - Policy Management
+      summary: Create a new insurance policy
+      description: Creates a new policy with coverages
+      operationId: createPolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePolicyRequest'
+            examples:
+              samplePolicy:
+                summary: Sample policy with two coverages
+                value:
+                  customerId: "CUST-001"
+                  effectiveDate: "2025-12-01"
+                  coverages:
+                    - coverageType: "Liability"
+                      premiumAmount: 500.00
+                      currency: "USD"
+                    - coverageType: "Collision"
+                      premiumAmount: 300.00
+                      currency: "USD"
+      responses:
+        '201':
+          description: Policy created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyResponse'
+              examples:
+                createdPolicy:
+                  value:
+                    policyNumber: "POL-2025-000001"
+                    totalPremiumAmount: 800.00
+                    totalPremiumCurrency: "USD"
+                    status: "DRAFT"
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/policies/health:
+    get:
+      tags:
+        - Health
+      summary: Health check for Policy API
+      description: Simple health check endpoint
+      operationId: policyHealth
+      responses:
+        '200':
+          description: Service is running
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Policy Service is running"
+
+  /api/v1/claims:
+    post:
+      tags:
+        - Claims
+      summary: Submit a new insurance claim
+      description: |
+        Submits a new claim for an existing policy. The claim will be validated
+        against business rules (policy exists and is active, amount is valid,
+        incident date is valid) before being persisted. A unique claim number
+        will be auto-generated in format CLM-YYYY-NNNNNN.
+      operationId: submitClaim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClaimRequest'
+            examples:
+              sampleClaim:
+                summary: Sample claim submission
+                value:
+                  policyId: "1"
+                  claimedAmount: 5000.00
+                  incidentDate: "2025-10-15"
+                  description: "Vehicle collision on highway"
+                  currency: "USD"
+      responses:
+        '201':
+          description: Claim submitted successfully
+          headers:
+            Location:
+              description: URI of the created claim
+              schema:
+                type: string
+                example: "/api/v1/claims/1"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+              examples:
+                submittedClaim:
+                  value:
+                    claimId: 1
+                    claimNumber: "CLM-2025-000001"
+                    policyId: "1"
+                    claimedAmount: 5000.00
+                    status: "SUBMITTED"
+                    submittedDate: "2025-11-07"
+        '400':
+          description: Invalid request data or business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Policy not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Policy not active or other constraint violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/claims/health:
+    get:
+      tags:
+        - Health
+      summary: Health check for Claims API
+      description: Simple health check endpoint
+      operationId: claimsHealth
+      responses:
+        '200':
+          description: Service is running
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Claims Service is running"
+
+  /api/v1/payments:
+    post:
+      tags:
+        - Payments
+      summary: Process a new payment
+      description: Process a payment for an approved insurance claim
+      operationId: processPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessPaymentRequest'
+            examples:
+              samplePayment:
+                summary: Sample payment processing
+                value:
+                  claimId: 1
+                  amount: 5000.00
+                  paymentMethod: "BANK_TRANSFER"
+                  transactionId: "TXN-2025-ABC123"
+                  processedBy: "admin@insurance.com"
+                  notes: "Full claim settlement"
+      responses:
+        '201':
+          description: Payment processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Invalid payment request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Claim not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Duplicate transaction ID or claim not approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Payments
+      summary: Get all payments
+      description: Retrieve all payments, optionally filtered by status
+      operationId: getAllPayments
+      parameters:
+        - name: status
+          in: query
+          description: Filter by payment status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, COMPLETED, FAILED]
+            example: COMPLETED
+      responses:
+        '200':
+          description: Payments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentResponse'
+
+  /api/v1/payments/{id}:
+    get:
+      tags:
+        - Payments
+      summary: Get payment by ID
+      description: Retrieve payment details by payment ID
+      operationId: getPaymentById
+      parameters:
+        - name: id
+          in: path
+          description: Payment ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: Payment found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '404':
+          description: Payment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/payments/claim/{claimId}:
+    get:
+      tags:
+        - Payments
+      summary: Get payments for a claim
+      description: Retrieve all payments associated with a specific claim
+      operationId: getPaymentsByClaimId
+      parameters:
+        - name: claimId
+          in: path
+          description: Claim ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: Payments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentResponse'
+
+  /actuator/health:
+    get:
+      tags:
+        - Health
+      summary: Application health check
+      description: Returns the health status of the application
+      operationId: health
+      responses:
+        '200':
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    CreatePolicyRequest:
+      type: object
+      required:
+        - customerId
+        - effectiveDate
+        - coverages
+      properties:
+        customerId:
+          type: string
+          description: Unique customer identifier
+          example: "CUST-001"
+        effectiveDate:
+          type: string
+          format: date
+          description: Policy effective date (must be in future)
+          example: "2025-12-01"
+        coverages:
+          type: array
+          description: List of coverage items (at least one required)
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CoverageDto'
+
+    CoverageDto:
+      type: object
+      required:
+        - coverageType
+        - premiumAmount
+        - currency
+      properties:
+        coverageType:
+          type: string
+          description: Type of coverage
+          example: "Liability"
+        premiumAmount:
+          type: number
+          format: double
+          description: Premium amount (must be > 0)
+          minimum: 0.01
+          example: 500.00
+        currency:
+          type: string
+          description: Currency code (ISO 4217)
+          pattern: '^[A-Z]{3}$'
+          example: "USD"
+
+    PolicyResponse:
+      type: object
+      properties:
+        policyNumber:
+          type: string
+          description: Auto-generated policy number
+          example: "POL-2025-000001"
+        totalPremiumAmount:
+          type: number
+          format: double
+          description: Sum of all coverage premiums
+          example: 800.00
+        totalPremiumCurrency:
+          type: string
+          description: Currency code
+          example: "USD"
+        status:
+          type: string
+          description: Policy status
+          enum: [DRAFT, ACTIVE, CANCELLED, EXPIRED]
+          example: "DRAFT"
+
+    CreateClaimRequest:
+      type: object
+      required:
+        - policyId
+        - claimedAmount
+        - incidentDate
+        - description
+        - currency
+      properties:
+        policyId:
+          type: string
+          description: ID of the policy for this claim
+          example: "1"
+        claimedAmount:
+          type: number
+          format: double
+          description: Claimed amount (must be > 0)
+          minimum: 0.01
+          example: 5000.00
+        incidentDate:
+          type: string
+          format: date
+          description: Date of incident (must not be in future)
+          example: "2025-10-15"
+        description:
+          type: string
+          description: Description of the incident
+          minLength: 1
+          example: "Vehicle collision on highway"
+        currency:
+          type: string
+          description: Currency code (ISO 4217)
+          pattern: '^[A-Z]{3}$'
+          example: "USD"
+
+    ClaimResponse:
+      type: object
+      properties:
+        claimId:
+          type: integer
+          format: int64
+          description: Internal claim ID
+          example: 1
+        claimNumber:
+          type: string
+          description: Auto-generated claim number
+          example: "CLM-2025-000001"
+        policyId:
+          type: string
+          description: Associated policy ID
+          example: "1"
+        claimedAmount:
+          type: number
+          format: double
+          description: Claimed amount
+          example: 5000.00
+        status:
+          type: string
+          description: Claim status
+          enum: [SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, PAID]
+          example: "SUBMITTED"
+        submittedDate:
+          type: string
+          format: date
+          description: Date claim was submitted
+          example: "2025-11-07"
+
+    ProcessPaymentRequest:
+      type: object
+      required:
+        - claimId
+        - amount
+        - paymentMethod
+        - transactionId
+        - processedBy
+      properties:
+        claimId:
+          type: integer
+          format: int64
+          description: ID of the approved claim
+          example: 1
+        amount:
+          type: number
+          format: double
+          description: Payment amount (must be > 0)
+          minimum: 0.01
+          example: 5000.00
+        paymentMethod:
+          type: string
+          description: Payment method
+          enum: [BANK_TRANSFER, CHECK, CARD, CASH]
+          example: "BANK_TRANSFER"
+        transactionId:
+          type: string
+          description: Unique transaction identifier
+          minLength: 1
+          example: "TXN-2025-ABC123"
+        processedBy:
+          type: string
+          description: User who processed the payment
+          minLength: 1
+          example: "admin@insurance.com"
+        notes:
+          type: string
+          description: Additional payment notes
+          example: "Full claim settlement"
+
+    PaymentResponse:
+      type: object
+      properties:
+        paymentId:
+          type: integer
+          format: int64
+          description: Internal payment ID
+          example: 1
+        claimId:
+          type: integer
+          format: int64
+          description: Associated claim ID
+          example: 1
+        amount:
+          type: number
+          format: double
+          description: Payment amount
+          example: 5000.00
+        paymentMethod:
+          type: string
+          description: Payment method used
+          example: "BANK_TRANSFER"
+        paymentStatus:
+          type: string
+          description: Payment status
+          enum: [PENDING, COMPLETED, FAILED]
+          example: "COMPLETED"
+        transactionId:
+          type: string
+          description: Transaction identifier
+          example: "TXN-2025-ABC123"
+        paymentDate:
+          type: string
+          format: date
+          description: Date payment was processed
+          example: "2025-11-07"
+        processedBy:
+          type: string
+          description: User who processed the payment
+          example: "admin@insurance.com"
+        notes:
+          type: string
+          description: Additional notes
+          example: "Full claim settlement"
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2025-11-07T10:30:00.000+00:00"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        error:
+          type: string
+          description: Error type
+          example: "Bad Request"
+        message:
+          type: string
+          description: Error message
+          example: "Validation failed"
+        path:
+          type: string
+          description: Request path
+          example: "/api/v1/policies"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN, OUT_OF_SERVICE, UNKNOWN]
+          example: "UP"
+        components:
+          type: object
+          additionalProperties:
+            type: object
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token (not currently implemented)
+
+# Security is not currently implemented
+# Uncomment when authentication is added
+# security:
+#   - BearerAuth: []

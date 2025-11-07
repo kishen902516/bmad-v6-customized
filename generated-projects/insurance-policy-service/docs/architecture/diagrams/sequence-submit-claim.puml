@@ -1,0 +1,98 @@
+@startuml Submit Claim - Sequence Diagram
+
+title Submit Claim - Sequence Diagram
+
+actor "Customer" as customer
+participant "ClaimController" as controller
+participant "SubmitClaimService" as service
+participant "PolicyRepository" as policyRepo
+participant "ClaimRepository" as claimRepo
+participant "Policy" as policy
+participant "Claim" as claim
+database "PostgreSQL" as db
+
+customer -> controller : POST /api/v1/claims\n{policyId, amount, incidentDate}
+
+activate controller
+    controller -> controller : Validate request\n(@Valid annotation)
+
+    controller -> service : execute(SubmitClaimInput)
+    activate service
+
+        service -> policyRepo : findById(policyId)
+        activate policyRepo
+            policyRepo -> db : SELECT * FROM policy WHERE id = ?
+            activate db
+            db --> policyRepo : PolicyJpaEntity
+            deactivate db
+            policyRepo -> policyRepo : Map JPA → Domain
+        policyRepo --> service : Optional<Policy>
+        deactivate policyRepo
+
+        alt Policy not found
+            service --> controller : throw PolicyNotFoundException
+            controller --> customer : 404 Not Found
+        else Policy found
+            service -> policy : isActive()
+            activate policy
+            policy --> service : true/false
+            deactivate policy
+
+            alt Policy not active
+                service --> controller : throw InvalidClaimException
+                controller --> customer : 409 Conflict
+            else Policy is active
+                service -> claim : new Claim(claimNumber, amount, incidentDate, policyId)
+                activate claim
+                    claim -> claim : Validate business rules:\n- Amount > 0\n- Incident date not in future\n- Policy ID not null
+                claim --> service : Claim instance
+                deactivate claim
+
+                service -> claimRepo : save(claim)
+                activate claimRepo
+                    claimRepo -> claimRepo : Map Domain → JPA
+                    claimRepo -> db : INSERT INTO claim VALUES (...)
+                    activate db
+                    db --> claimRepo : Saved ClaimJpaEntity
+                    deactivate db
+                    claimRepo -> claimRepo : Map JPA → Domain
+                claimRepo --> service : Claim (with ID)
+                deactivate claimRepo
+
+                service -> service : Create SubmitClaimOutput
+                service --> controller : SubmitClaimOutput
+            end
+        end
+    deactivate service
+
+    controller -> controller : Map Output → Response
+    controller --> customer : 201 Created\nLocation: /api/v1/claims/{id}\n{claimNumber, status}
+deactivate controller
+
+note right of service
+  **Business Logic in Service**
+
+  1. Verify policy exists
+  2. Verify policy is active
+  3. Create claim domain object
+  4. Domain validates itself:
+     - Amount validation
+     - Date validation
+     - Policy ID validation
+  5. Persist claim
+  6. Return claim details
+end note
+
+note right of claim
+  **Domain Entity Validation**
+
+  The Claim constructor enforces:
+  - claimNumber is not null
+  - claimedAmount > 0
+  - incidentDate <= today
+  - policyId is not empty
+
+  Status is automatically set to SUBMITTED
+end note
+
+@enduml

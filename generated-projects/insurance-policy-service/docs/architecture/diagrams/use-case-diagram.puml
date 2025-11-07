@@ -1,0 +1,108 @@
+@startuml Insurance Policy Service - Use Case Diagram
+
+title Insurance Policy Service - Use Cases
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Customer" as customer
+actor "Claims Adjuster" as adjuster
+actor "Payment Processor" as processor
+actor "System Administrator" as admin
+
+rectangle "Insurance Policy Service" {
+    usecase "Create Policy" as UC1
+    usecase "Activate Policy" as UC2
+    usecase "Cancel Policy" as UC3
+    usecase "Submit Claim" as UC4
+    usecase "Review Claim" as UC5
+    usecase "Approve Claim" as UC6
+    usecase "Reject Claim" as UC7
+    usecase "Process Payment" as UC8
+    usecase "View Payment Status" as UC9
+    usecase "Manage Customer" as UC10
+
+    ' Customer use cases
+    customer --> UC1 : creates
+    customer --> UC4 : submits
+    customer --> UC9 : views
+
+    ' Claims Adjuster use cases
+    adjuster --> UC5 : reviews
+    adjuster --> UC6 : approves
+    adjuster --> UC7 : rejects
+
+    ' Payment Processor use cases
+    processor --> UC8 : processes
+    processor --> UC9 : monitors
+
+    ' Admin use cases
+    admin --> UC2 : activates
+    admin --> UC3 : cancels
+    admin --> UC10 : manages
+
+    ' Use case relationships
+    UC1 ..> UC2 : <<include>>
+    UC4 ..> UC5 : <<include>>
+    UC6 ..> UC8 : <<precedes>>
+}
+
+note right of UC1
+  **Create Policy**
+
+  Inputs:
+  - Customer ID
+  - Effective date
+  - Coverages
+
+  Outputs:
+  - Policy number
+  - Total premium
+  - Status (DRAFT)
+
+  Business Rules:
+  - Effective date must be future
+  - At least one coverage required
+  - Premium auto-calculated
+end note
+
+note right of UC4
+  **Submit Claim**
+
+  Inputs:
+  - Policy ID
+  - Claimed amount
+  - Incident date
+  - Description
+
+  Outputs:
+  - Claim number
+  - Claim status (SUBMITTED)
+
+  Business Rules:
+  - Policy must be active
+  - Incident date not in future
+  - Amount must be positive
+end note
+
+note right of UC8
+  **Process Payment**
+
+  Inputs:
+  - Claim ID
+  - Payment amount
+  - Payment method
+  - Transaction ID
+
+  Outputs:
+  - Payment ID
+  - Payment status
+
+  Business Rules:
+  - Claim must be approved
+  - Transaction ID must be unique
+  - Updates claim to PAID
+end note
+
+@enduml

@@ -1,0 +1,165 @@
+@startuml Insurance Policy Service - Entity Relationship Diagram
+
+!define Table(name,desc) class name as "desc" << (T,#FFAAAA) >>
+!define primary_key(x) <b>PK: x</b>
+!define foreign_key(x) <color:blue>FK: x</color>
+!define unique(x) <color:green>UQ: x</color>
+
+title Insurance Policy Service - Database Schema (Entity Relationship Diagram)
+
+skinparam class {
+    BackgroundColor #FFF8E1
+    BorderColor #666666
+    ArrowColor #666666
+}
+
+entity "policy" as policy {
+  primary_key(id: BIGINT)
+  --
+  unique(policy_number: VARCHAR(20))
+  customer_id: VARCHAR(50)
+  effective_date: DATE
+  expiration_date: DATE
+  total_premium_amount: DECIMAL(19,2)
+  total_premium_currency: VARCHAR(3)
+  status: VARCHAR(20)
+  --
+  created_at: TIMESTAMP
+  updated_at: TIMESTAMP
+}
+
+entity "coverage" as coverage {
+  primary_key(id: BIGINT)
+  --
+  foreign_key(policy_id: BIGINT)
+  coverage_type: VARCHAR(50)
+  premium_amount: DECIMAL(19,2)
+  premium_currency: VARCHAR(3)
+}
+
+entity "claim" as claim {
+  primary_key(id: BIGINT)
+  --
+  unique(claim_number: VARCHAR(20))
+  foreign_key(policy_id: VARCHAR(50))
+  claimed_amount: DECIMAL(19,2)
+  incident_date: DATE
+  status: VARCHAR(20)
+  submitted_date: DATE
+  --
+  created_at: TIMESTAMP
+  updated_at: TIMESTAMP
+}
+
+entity "payment" as payment {
+  primary_key(payment_id: BIGINT)
+  --
+  foreign_key(claim_id: BIGINT)
+  amount: DECIMAL(19,2)
+  payment_method: VARCHAR(20)
+  payment_status: VARCHAR(20)
+  unique(transaction_id: VARCHAR(50))
+  payment_date: DATE
+  processed_by: VARCHAR(100)
+  notes: TEXT
+  --
+  created_at: TIMESTAMP
+  updated_at: TIMESTAMP
+}
+
+entity "customer" as customer {
+  primary_key(id: BIGINT)
+  --
+  unique(customer_id: VARCHAR(50))
+  name: VARCHAR(100)
+  email: VARCHAR(100)
+  status: VARCHAR(20)
+  --
+  created_at: TIMESTAMP
+  updated_at: TIMESTAMP
+}
+
+' Relationships
+policy ||--o{ coverage : "has many"
+customer ||--o{ policy : "owns many"
+policy ||--o{ claim : "has many"
+claim ||--o{ payment : "has many"
+
+note right of policy
+  **Policy Table**
+
+  Stores insurance policy information.
+  - policy_number: Auto-generated (POL-YYYY-NNNNNN)
+  - status: DRAFT, ACTIVE, CANCELLED, EXPIRED
+  - Total premium calculated from coverages
+
+  **Indexes:**
+  - idx_policy_number ON policy_number
+  - idx_customer_id ON customer_id
+  - idx_status ON status
+end note
+
+note right of claim
+  **Claim Table**
+
+  Stores insurance claim submissions.
+  - claim_number: Auto-generated (CLM-YYYY-NNNNNN)
+  - status: SUBMITTED, UNDER_REVIEW,
+            APPROVED, REJECTED, PAID
+
+  **Indexes:**
+  - idx_claim_number ON claim_number
+  - idx_policy_id ON policy_id
+  - idx_status ON status
+end note
+
+note right of payment
+  **Payment Table**
+
+  Stores payment transactions for claims.
+  - transaction_id: Unique transaction identifier
+  - payment_method: BANK_TRANSFER, CHECK, CARD, CASH
+  - payment_status: PENDING, COMPLETED, FAILED
+
+  **Indexes:**
+  - idx_claim_id ON claim_id
+  - idx_transaction_id ON transaction_id (unique)
+  - idx_payment_status ON payment_status
+end note
+
+note right of coverage
+  **Coverage Table**
+
+  Stores coverage items for policies.
+  - Part of Policy aggregate
+  - coverage_type: Liability, Collision, etc.
+  - Amounts stored with currency
+
+  **Cascade:**
+  - DELETE CASCADE with policy
+end note
+
+note right of customer
+  **Customer Table**
+
+  Stores customer information (simplified).
+  - customer_id: Unique customer identifier
+  - status: ACTIVE, INACTIVE, SUSPENDED
+
+  **Note:**
+  In a microservices architecture, this
+  would typically be a separate service.
+end note
+
+legend left
+  |= Symbol |= Meaning |
+  | PK | Primary Key |
+  | FK | Foreign Key |
+  | UQ | Unique Constraint |
+
+  |= Cardinality |= Meaning |
+  | ||--o{ | One to Many |
+  | }o--|| | Many to One |
+endlegend
+
+@enduml

@@ -1,0 +1,153 @@
+@startuml Process Payment - Sequence Diagram
+
+title Process Payment - Sequence Diagram
+
+actor "Payment Processor" as processor
+participant "PaymentController" as controller
+participant "ProcessPaymentService" as service
+participant "ClaimRepository" as claimRepo
+participant "PaymentRepository" as paymentRepo
+participant "Claim" as claim
+participant "Payment" as payment
+database "PostgreSQL" as db
+
+processor -> controller : POST /api/v1/payments\n{claimId, amount, method, transactionId}
+
+activate controller
+    controller -> controller : Validate request\n(@Valid annotation)
+
+    controller -> service : execute(ProcessPaymentInput)
+    activate service
+
+        service -> claimRepo : findById(claimId)
+        activate claimRepo
+            claimRepo -> db : SELECT * FROM claim WHERE id = ?
+            activate db
+            db --> claimRepo : ClaimJpaEntity
+            deactivate db
+            claimRepo -> claimRepo : Map JPA → Domain
+        claimRepo --> service : Optional<Claim>
+        deactivate claimRepo
+
+        alt Claim not found
+            service --> controller : throw ClaimNotFoundException
+            controller --> processor : 404 Not Found
+        else Claim found
+            service -> claim : canBeProcessedForPayment()
+            activate claim
+                claim -> claim : Check if status == APPROVED
+            claim --> service : true/false
+            deactivate claim
+
+            alt Claim not approved
+                service --> controller : throw ClaimNotApprovedException
+                controller --> processor : 409 Conflict\n"Claim must be approved"
+            else Claim is approved
+                ' Check for duplicate transaction ID
+                service -> paymentRepo : findByTransactionId(transactionId)
+                activate paymentRepo
+                    paymentRepo -> db : SELECT * FROM payment\nWHERE transaction_id = ?
+                    activate db
+                    db --> paymentRepo : PaymentJpaEntity or null
+                    deactivate db
+                paymentRepo --> service : Optional<Payment>
+                deactivate paymentRepo
+
+                alt Transaction ID already exists
+                    service --> controller : throw DuplicateTransactionIdException
+                    controller --> processor : 409 Conflict\n"Transaction ID already used"
+                else Transaction ID is unique
+                    ' Create payment
+                    service -> payment : new Payment(\nclaimId, amount,\nmethod, transactionId,\nprocessedBy, notes)
+                    activate payment
+                        payment -> payment : Validate:\n- Amount > 0\n- Method not null\n- TransactionId not empty
+                        payment -> payment : Set status = PENDING
+                    payment --> service : Payment instance
+                    deactivate payment
+
+                    ' Save payment
+                    service -> paymentRepo : save(payment)
+                    activate paymentRepo
+                        paymentRepo -> paymentRepo : Map Domain → JPA
+                        paymentRepo -> db : INSERT INTO payment VALUES (...)
+                        activate db
+                        db --> paymentRepo : Saved PaymentJpaEntity
+                        deactivate db
+                        paymentRepo -> paymentRepo : Map JPA → Domain
+                    paymentRepo --> service : Payment (with ID)
+                    deactivate paymentRepo
+
+                    ' Mark claim as paid
+                    service -> claim : markAsPaid()
+                    activate claim
+                        claim -> claim : Validate status == APPROVED
+                        claim -> claim : Set status = PAID
+                    claim --> service : void
+                    deactivate claim
+
+                    ' Update claim in database
+                    service -> claimRepo : save(claim)
+                    activate claimRepo
+                        claimRepo -> claimRepo : Map Domain → JPA
+                        claimRepo -> db : UPDATE claim\nSET status = 'PAID'\nWHERE id = ?
+                        activate db
+                        db --> claimRepo : Updated ClaimJpaEntity
+                        deactivate db
+                    claimRepo --> service : Claim
+                    deactivate claimRepo
+
+                    service -> service : Create ProcessPaymentOutput
+                    service --> controller : ProcessPaymentOutput
+                end
+            end
+        end
+    deactivate service
+
+    ' Fetch full payment details
+    controller -> paymentRepo : findById(paymentId)
+    activate paymentRepo
+        paymentRepo -> db : SELECT * FROM payment WHERE id = ?
+        activate db
+        db --> paymentRepo : PaymentJpaEntity
+        deactivate db
+        paymentRepo -> paymentRepo : Map JPA → Domain
+    paymentRepo --> controller : Payment
+    deactivate paymentRepo
+
+    controller -> controller : Map Payment → Response
+    controller --> processor : 201 Created\n{paymentId, status, transactionId}
+deactivate controller
+
+note right of service
+  **Business Rules Enforced**
+
+  1. Claim must exist
+  2. Claim must be APPROVED
+  3. Transaction ID must be unique
+  4. Payment amount must be positive
+  5. Payment marks claim as PAID
+  6. All validations in domain objects
+
+  **Transaction Boundary**
+  The @Transactional annotation
+  ensures atomicity:
+  - Payment creation
+  - Claim status update
+  Both succeed or both fail.
+end note
+
+note right of payment
+  **Domain Validation**
+
+  Payment constructor validates:
+  - claimId is not null
+  - amount > 0
+  - paymentMethod is not null
+  - transactionId is unique
+  - processedBy is not empty
+
+  Status starts as PENDING,
+  can transition to COMPLETED or FAILED.
+end note
+
+@enduml
