@@ -99,11 +99,9 @@ class ArchitectureTest {
         ArchRule rule = classes()
                 .that().haveSimpleNameEndingWith("Repository")
                 .and().areInterfaces()
-                .and().doNotHaveSimpleName("PolicySpringDataRepository")  // Exclude Spring Data repos
-                .and().doNotHaveSimpleName("ClaimSpringDataRepository")   // Exclude Spring Data repos
-                .and().doNotHaveSimpleName("CustomerSpringDataRepository") // Exclude Spring Data repos
-                .and().doNotHaveSimpleName("PaymentSpringDataRepository") // Exclude Spring Data repos
-                .should().resideInAPackage("..domain.port");
+                .and().haveSimpleNameNotEndingWith("SpringDataRepository")  // Exclude Spring Data repositories
+                .should().resideInAPackage("..domain.port")
+                .as("Repository interfaces should reside in domain.port package (excluding Spring Data repositories)");
 
         rule.check(classes);
     }

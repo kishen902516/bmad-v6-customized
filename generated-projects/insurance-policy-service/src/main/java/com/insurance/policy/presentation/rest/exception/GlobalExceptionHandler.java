@@ -1,6 +1,10 @@
 package com.insurance.policy.presentation.rest.exception;
 
+import com.insurance.policy.application.exception.ClaimNotApprovedException;
+import com.insurance.policy.application.exception.DuplicateTransactionIdException;
 import com.insurance.policy.application.exception.InvalidClaimAmountException;
+import com.insurance.policy.application.exception.InvalidPaymentException;
+import com.insurance.policy.application.exception.PaymentNotFoundException;
 import com.insurance.policy.application.exception.PolicyNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,6 +92,79 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
+
+    /**
+     * Handles PaymentNotFoundException from the application layer.
+     * Returns 404 Not Found when a payment cannot be found.
+     */
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentNotFoundException(PaymentNotFoundException ex) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage(),
+                null,
+                LocalDateTime.now()
+        );
+
+        log.warn("Payment not found: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    /**
+     * Handles InvalidPaymentException from the application layer.
+     * Returns 400 Bad Request when a payment violates business rules.
+     */
+    @ExceptionHandler(InvalidPaymentException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPaymentException(InvalidPaymentException ex) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                null,
+                LocalDateTime.now()
+        );
+
+        log.warn("Invalid payment: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    /**
+     * Handles ClaimNotApprovedException from the application layer.
+     * Returns 409 Conflict when attempting to process payment for non-approved claim.
+     */
+    @ExceptionHandler(ClaimNotApprovedException.class)
+    public ResponseEntity<ErrorResponse> handleClaimNotApprovedException(ClaimNotApprovedException ex) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                ex.getMessage(),
+                null,
+                LocalDateTime.now()
+        );
+
+        log.warn("Claim not approved: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    /**
+     * Handles DuplicateTransactionIdException from the application layer.
+     * Returns 409 Conflict when a duplicate transaction ID is detected.
+     */
+    @ExceptionHandler(DuplicateTransactionIdException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateTransactionIdException(DuplicateTransactionIdException ex) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                ex.getMessage(),
+                null,
+                LocalDateTime.now()
+        );
+
+        log.warn("Duplicate transaction ID: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
 
     /**
      * Handles IllegalArgumentException for general validation failures.
