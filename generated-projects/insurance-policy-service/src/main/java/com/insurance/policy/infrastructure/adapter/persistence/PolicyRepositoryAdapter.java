@@ -25,10 +25,10 @@ import java.util.stream.Collectors;
 @Component
 public class PolicyRepositoryAdapter implements PolicyRepository {
 
-    private final PolicyJpaRepository jpaRepository;
+    private final PolicySpringDataRepository jpaRepository;
     private final ObjectMapper objectMapper;
 
-    public PolicyRepositoryAdapter(PolicyJpaRepository jpaRepository, ObjectMapper objectMapper) {
+    public PolicyRepositoryAdapter(PolicySpringDataRepository jpaRepository, ObjectMapper objectMapper) {
         this.jpaRepository = jpaRepository;
         this.objectMapper = objectMapper;
     }

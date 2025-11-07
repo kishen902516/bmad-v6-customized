@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.*;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
+import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 /**
  * ArchUnit tests for Clean Architecture compliance.
@@ -98,6 +99,7 @@ class ArchitectureTest {
         ArchRule rule = classes()
                 .that().haveSimpleNameEndingWith("Repository")
                 .and().areInterfaces()
+                .and().doNotHaveSimpleName("PolicySpringDataRepository")  // Exclude Spring Data repos
                 .should().resideInAPackage("..domain.port");
 
         rule.check(classes);

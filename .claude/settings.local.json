@@ -7,7 +7,8 @@
       "Bash(do echo \"Processing $dir\")",
       "Bash(test:*)",
       "Bash(done)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(mvn test:*)"
     ],
     "deny": [],
     "ask": []
