@@ -1,0 +1,41 @@
+package {{base_package}}.presentation.rest.model;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.*;
+{{imports}}
+
+/**
+ * Request DTO for {{entity_name}} API.
+ *
+ * This Record represents the HTTP request body for {{entity_name}} operations.
+ * It is immutable and validates itself using Jakarta Bean Validation.
+ * Includes OpenAPI schema annotations for documentation.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@Schema(description = "Request model for {{entity_description}}")
+public record {{entity_name}}Request(
+
+    {{record_components_with_validation_and_schema}}
+
+) {
+
+    /**
+     * Compact constructor with custom validation.
+     */
+    public {{entity_name}}Request {
+        {{custom_validations}}
+    }
+
+    /**
+     * Convert request to use case input DTO.
+     *
+     * @return use case input DTO
+     */
+    public {{use_case_name}}Input toInput() {
+        return new {{use_case_name}}Input(
+            {{input_args}}
+        );
+    }
+}

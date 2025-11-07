@@ -1,0 +1,46 @@
+package {{base_package}}.presentation.rest.model;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+{{imports}}
+
+/**
+ * Response DTO for {{entity_name}} API.
+ *
+ * This Record represents the HTTP response body for {{entity_name}} operations.
+ * It is immutable and contains only the data to be exposed via API.
+ * Includes OpenAPI schema annotations for documentation.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@Schema(description = "Response model for {{entity_description}}")
+public record {{entity_name}}Response(
+
+    {{record_components_with_schema}}
+
+) {
+
+    /**
+     * Create response from use case output DTO.
+     *
+     * @param output use case output DTO
+     * @return API response DTO
+     */
+    public static {{entity_name}}Response from({{use_case_name}}Output output) {
+        return new {{entity_name}}Response(
+            {{response_args}}
+        );
+    }
+
+    /**
+     * Create response from domain entity (alternative factory).
+     *
+     * @param {{entity_name_camel}} domain entity
+     * @return API response DTO
+     */
+    public static {{entity_name}}Response from({{entity_name}} {{entity_name_camel}}) {
+        return new {{entity_name}}Response(
+            {{response_args_from_entity}}
+        );
+    }
+}

@@ -1,0 +1,23 @@
+package {{base_package}}.infrastructure.adapter.persistence.jpa;
+
+import {{base_package}}.infrastructure.adapter.persistence.entity.{{entity_name}}JpaEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Spring Data JPA repository for {{entity_name}}JpaEntity.
+ *
+ * Provides CRUD operations and custom queries for database access.
+ * Used internally by {{entity_name}}RepositoryImpl.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public interface {{entity_name}}JpaRepository extends JpaRepository<{{entity_name}}JpaEntity, {{id_type}}> {
+
+    {{custom_jpa_query_methods}}
+}

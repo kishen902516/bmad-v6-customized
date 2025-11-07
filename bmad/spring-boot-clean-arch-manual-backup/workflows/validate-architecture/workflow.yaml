@@ -1,0 +1,45 @@
+# Validate Architecture Workflow Configuration
+name: validate-architecture
+description: "Run complete ArchUnit validation suite and check architectural compliance"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+
+# Critical variables from config
+output_folder: "{config_source}:output_folder"
+user_name: "{config_source}:user_name"
+communication_language: "{config_source}:communication_language"
+date: system-generated
+
+# Module paths
+module_data_path: "{config_source}:module_data_path"
+module_agents_path: "{config_source}:module_agents_path"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/validate-architecture"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+# Data and guides
+patterns_folder: "{module_data_path}/patterns"
+archunit_templates: "{module_data_path}/archunit-templates"
+
+# Agents
+arch_validator_agent: "{module_agents_path}/arch-validator.agent.yaml"
+
+target_project_path: "{{project_path}}"
+
+standalone: true
+
+# Web bundle configuration
+web_bundle:
+  name: "validate-architecture"
+  description: "Run complete ArchUnit validation suite and check architectural compliance"
+  author: "Kishen Sivalingam"
+
+  web_bundle_files:
+    - "bmad/spring-boot-clean-arch/workflows/validate-architecture/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/workflows/validate-architecture/instructions.md"
+    - "bmad/spring-boot-clean-arch/config.yaml"
+    - "bmad/spring-boot-clean-arch/data/patterns"
+    - "bmad/spring-boot-clean-arch/data/archunit-templates"
+    - "bmad/spring-boot-clean-arch/agents/arch-validator.agent.yaml"

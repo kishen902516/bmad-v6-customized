@@ -1,0 +1,58 @@
+package {{base_package}}.domain.port;
+
+import {{base_package}}.domain.entity.{{entity_name}};
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Repository interface for {{entity_name}}.
+ *
+ * This is a port (interface) in the domain layer following Clean Architecture.
+ * It defines what operations are needed without specifying implementation details.
+ * The implementation will be in the infrastructure layer.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public interface {{entity_name}}Repository {
+
+    /**
+     * Save a {{entity_name}}.
+     *
+     * @param {{entity_name_camel}} the entity to save
+     * @return the saved entity with generated ID if new
+     */
+    {{entity_name}} save({{entity_name}} {{entity_name_camel}});
+
+    /**
+     * Find {{entity_name}} by ID.
+     *
+     * @param id the entity ID
+     * @return Optional containing the entity if found
+     */
+    Optional<{{entity_name}}> findById({{id_type}} id);
+
+    /**
+     * Find all {{entity_name}} entities.
+     *
+     * @return list of all entities
+     */
+    List<{{entity_name}}> findAll();
+
+    /**
+     * Delete {{entity_name}} by ID.
+     *
+     * @param id the entity ID to delete
+     */
+    void deleteById({{id_type}} id);
+
+    /**
+     * Check if {{entity_name}} exists by ID.
+     *
+     * @param id the entity ID
+     * @return true if exists, false otherwise
+     */
+    boolean existsById({{id_type}} id);
+
+    {{custom_query_methods}}
+}

@@ -1,0 +1,64 @@
+package {{base_package}}.infrastructure.adapter.persistence.entity;
+
+import jakarta.persistence.*;
+{{imports}}
+
+/**
+ * JPA Entity for {{entity_name}}.
+ *
+ * This is the infrastructure layer representation with JPA annotations.
+ * It maps to the database table and handles persistence concerns.
+ * Separated from domain entity to maintain Clean Architecture.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@Entity
+@Table(name = "{{table_name}}")
+public class {{entity_name}}JpaEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.{{id_strategy}})
+    @Column(name = "id")
+    private {{id_type}} id;
+
+    {{jpa_field_declarations}}
+
+    /**
+     * Default constructor for JPA.
+     */
+    public {{entity_name}}JpaEntity() {
+    }
+
+    /**
+     * Constructor with all fields.
+     */
+    public {{entity_name}}JpaEntity({{constructor_params}}) {
+        {{field_assignments}}
+    }
+
+    // Getters and Setters (required by JPA)
+
+    public {{id_type}} getId() {
+        return id;
+    }
+
+    public void setId({{id_type}} id) {
+        this.id = id;
+    }
+
+    {{getters_and_setters}}
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        {{entity_name}}JpaEntity that = ({{entity_name}}JpaEntity) o;
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+}

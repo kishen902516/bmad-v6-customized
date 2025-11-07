@@ -1,0 +1,66 @@
+# Add Use Case Workflow Configuration
+name: add-use-case
+description: "Add application service use case with orchestration logic and complete tests"
+author: "Kishen Sivalingam"
+
+# Configuration source
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+
+# Critical variables from config
+output_folder: "{config_source}:output_folder"
+user_name: "{config_source}:user_name"
+communication_language: "{config_source}:communication_language"
+date: system-generated
+
+# Module paths
+module_data_path: "{config_source}:module_data_path"
+module_templates_path: "{config_source}:module_templates_path"
+module_agents_path: "{config_source}:module_agents_path"
+
+# Workflow paths
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/add-use-case"
+template: false  # This is an interactive workflow
+instructions: "{installed_path}/instructions.md"
+
+# Use case templates
+use_case_interface_template: "{module_templates_path}/usecase"
+use_case_impl_template: "{module_templates_path}/usecase"
+dto_template: "{module_templates_path}/usecase"
+
+# Test templates
+use_case_test_template: "{module_templates_path}/tests/use-case-unit-test.java.template"
+
+# Data and guides
+tdd_guide: "{module_data_path}/TDD-WORKFLOW-GUIDE.md"
+
+# Agents
+test_engineer_agent: "{module_agents_path}/test-engineer.agent.yaml"
+arch_validator_agent: "{module_agents_path}/arch-validator.agent.yaml"
+
+# Target project context (provided at runtime)
+base_package: "{{base_package}}"
+
+standalone: false  # Usually invoked from Spring Architecture Agent
+
+# Web bundle configuration
+web_bundle:
+  name: "add-use-case"
+  description: "Add application service use case with orchestration logic and complete tests"
+  author: "Kishen Sivalingam"
+
+  web_bundle_files:
+    - "bmad/spring-boot-clean-arch/workflows/add-use-case/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/workflows/add-use-case/instructions.md"
+    - "bmad/spring-boot-clean-arch/workflows/add-rest-endpoint/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/workflows/validate-architecture/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/config.yaml"
+    - "bmad/spring-boot-clean-arch/templates/usecase"
+    - "bmad/spring-boot-clean-arch/templates/tests/use-case-unit-test.java.template"
+    - "bmad/spring-boot-clean-arch/data/TDD-WORKFLOW-GUIDE.md"
+    - "bmad/spring-boot-clean-arch/agents/test-engineer.agent.yaml"
+    - "bmad/spring-boot-clean-arch/agents/arch-validator.agent.yaml"
+
+  existing_workflows:
+    - add_rest_endpoint: "bmad/spring-boot-clean-arch/workflows/add-rest-endpoint/workflow.yaml"
+    - validate_architecture: "bmad/spring-boot-clean-arch/workflows/validate-architecture/workflow.yaml"
+    - add_use_case_recursive: "bmad/spring-boot-clean-arch/workflows/add-use-case/workflow.yaml"

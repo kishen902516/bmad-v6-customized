@@ -1,0 +1,179 @@
+// ============================================================================
+// PolicyNumber.java - Value Object for policy identification
+// ============================================================================
+package com.insurance.policy.domain.valueobject;
+
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
+
+/**
+ * PolicyNumber Value Object.
+ *
+ * Format: POL-YYYY-NNNNNN
+ * Example: POL-2025-000001
+ *
+ * Implemented as Java Record for immutability.
+ */
+public record PolicyNumber(String value) {
+
+    private static final Pattern PATTERN = Pattern.compile("POL-\\d{4}-\\d{6}");
+    private static final AtomicLong counter = new AtomicLong(0);
+
+    /**
+     * Compact constructor with validation.
+     */
+    public PolicyNumber {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("Policy number cannot be null or empty");
+        }
+        if (!PATTERN.matcher(value).matches()) {
+            throw new IllegalArgumentException(
+                    "Policy number must match format POL-YYYY-NNNNNN");
+        }
+    }
+
+    /**
+     * Generate a new policy number.
+     *
+     * @param year the year for the policy
+     * @return new policy number
+     */
+    public static PolicyNumber generate(int year) {
+        long sequence = counter.incrementAndGet();
+        String value = String.format("POL-%d-%06d", year, sequence);
+        return new PolicyNumber(value);
+    }
+
+    /**
+     * Factory method for creating from string.
+     */
+    public static PolicyNumber of(String value) {
+        return new PolicyNumber(value);
+    }
+}
+
+// ============================================================================
+// Money.java - Value Object for monetary amounts
+// ============================================================================
+package com.insurance.policy.domain.valueobject;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
+/**
+ * Money Value Object representing amount and currency.
+ *
+ * Immutable and validates itself on construction.
+ */
+public record Money(BigDecimal amount, String currency) {
+
+    public static final Money ZERO_USD = new Money(BigDecimal.ZERO, "USD");
+
+    /**
+     * Compact constructor with validation.
+     */
+    public Money {
+        if (amount == null) {
+            throw new IllegalArgumentException("Amount cannot be null");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Amount cannot be negative");
+        }
+        if (currency == null || currency.trim().isEmpty()) {
+            throw new IllegalArgumentException("Currency is required");
+        }
+        // Ensure 2 decimal places for money
+        amount = amount.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Factory method.
+     */
+    public static Money of(double amount, String currency) {
+        return new Money(BigDecimal.valueOf(amount), currency);
+    }
+
+    /**
+     * Add two Money values (must have same currency).
+     */
+    public Money add(Money other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new IllegalArgumentException("Cannot add different currencies");
+        }
+        return new Money(this.amount.add(other.amount), this.currency);
+    }
+
+    /**
+     * Multiply by a factor.
+     */
+    public Money multiply(double factor) {
+        return new Money(this.amount.multiply(BigDecimal.valueOf(factor)), this.currency);
+    }
+
+    public boolean isGreaterThan(Money other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new IllegalArgumentException("Cannot compare different currencies");
+        }
+        return this.amount.compareTo(other.amount) > 0;
+    }
+}
+
+// ============================================================================
+// Coverage.java - Value Object for insurance coverage
+// ============================================================================
+package com.insurance.policy.domain.valueobject;
+
+/**
+ * Coverage Value Object representing an insurance coverage.
+ *
+ * Contains coverage type and premium amount.
+ */
+public record Coverage(String coverageType, Money premiumAmount) {
+
+    /**
+     * Compact constructor with validation.
+     */
+    public Coverage {
+        if (coverageType == null || coverageType.trim().isEmpty()) {
+            throw new IllegalArgumentException("Coverage type is required");
+        }
+        if (premiumAmount == null) {
+            throw new IllegalArgumentException("Premium amount is required");
+        }
+    }
+
+    public static Coverage of(String coverageType, double premiumAmount, String currency) {
+        return new Coverage(coverageType, Money.of(premiumAmount, currency));
+    }
+}
+
+// ============================================================================
+// PolicyStatus.java - Enumeration for policy status
+// ============================================================================
+package com.insurance.policy.domain.valueobject;
+
+/**
+ * PolicyStatus enumeration.
+ *
+ * Represents the lifecycle states of an insurance policy.
+ */
+public enum PolicyStatus {
+    DRAFT("Draft - not yet active"),
+    ACTIVE("Active and in force"),
+    EXPIRED("Expired - coverage ended"),
+    CANCELLED("Cancelled before expiration");
+
+    private final String description;
+
+    PolicyStatus(String description) {
+        this.description = description;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public boolean isTerminal() {
+        return this == EXPIRED || this == CANCELLED;
+    }
+}

@@ -1,0 +1,108 @@
+package {{base_package}}.presentation.rest.pact;
+
+import au.com.dius.pact.provider.junit5.HttpTestTarget;
+import au.com.dius.pact.provider.junit5.PactVerificationContext;
+import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.Provider;
+import au.com.dius.pact.provider.junitsupport.State;
+import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
+import au.com.dius.pact.provider.spring.junit5.MockMvcTestTarget;
+import {{base_package}}.application.usecase.{{use_case_name}}UseCase;
+import {{base_package}}.application.dto.{{use_case_name}}Output;
+import {{base_package}}.domain.entity.{{entity_name}};
+import {{base_package}}.presentation.rest.{{entity_name}}Controller;
+import {{base_package}}.presentation.rest.exception.EntityNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+/**
+ * Pact Provider verification tests for {{entity_name}}API.
+ *
+ * These tests verify that the provider satisfies the contracts
+ * defined by consumers in their Pact files.
+ *
+ * Provider: {{provider_name}}
+ * Pact Files Location: target/pacts/
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@ExtendWith(SpringExtension.class)
+@WebMvcTest({{entity_name}}Controller.class)
+@Provider("{{provider_name}}")
+@PactFolder("target/pacts")
+@DisplayName("{{entity_name}} API Provider Contract Verification")
+class {{entity_name}}ProviderPactTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private {{use_case_name}}UseCase {{use_case_name_camel}};
+
+    {{additional_use_case_mocks}}
+
+    @BeforeEach
+    void setUp(PactVerificationContext context) {
+        context.setTarget(new MockMvcTestTarget(mockMvc));
+    }
+
+    /**
+     * Verify all Pact contracts.
+     */
+    @TestTemplate
+    @ExtendWith(PactVerificationInvocationContextProvider.class)
+    @DisplayName("Verify Pact contracts")
+    void verifyPact(PactVerificationContext context) {
+        context.verifyInteraction();
+    }
+
+    /**
+     * State: {{entity_name}} can be created
+     *
+     * Sets up mock behavior for creating a {{entity_name}}.
+     */
+    @State("{{entity_name}} can be created")
+    void to{{entity_name}}CanBeCreated() {
+        {{use_case_name}}Output output = {{create_mock_output}};
+
+        when({{use_case_name_camel}}.execute(any()))
+                .thenReturn(output);
+    }
+
+    /**
+     * State: {{entity_name}} with ID {{test_id}} exists
+     *
+     * Sets up mock behavior for retrieving an existing {{entity_name}}.
+     */
+    @State("{{entity_name}} with ID {{test_id}} exists")
+    void to{{entity_name}}Exists() {
+        {{use_case_name}}Output output = {{create_mock_output_with_id}};
+
+        when({{use_case_name_camel}}.execute(any()))
+                .thenReturn(output);
+    }
+
+    /**
+     * State: {{entity_name}} with ID {{non_existent_id}} does not exist
+     *
+     * Sets up mock behavior for {{entity_name}} not found scenario.
+     */
+    @State("{{entity_name}} with ID {{non_existent_id}} does not exist")
+    void to{{entity_name}}DoesNotExist() {
+        when({{use_case_name_camel}}.execute(any()))
+                .thenThrow(new EntityNotFoundException("{{entity_name}} not found"));
+    }
+
+    {{additional_state_handlers}}
+}

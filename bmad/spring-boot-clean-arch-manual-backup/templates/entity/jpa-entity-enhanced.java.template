@@ -1,0 +1,199 @@
+package {{base_package}}.infrastructure.adapter.persistence.entity;
+
+import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+{{imports}}
+import java.time.LocalDateTime;
+import java.util.Objects;
+
+/**
+ * JPA Entity for {{entity_name}}.
+ *
+ * This is the infrastructure layer representation with JPA annotations.
+ * It maps to the database table and handles persistence concerns.
+ * Separated from domain entity to maintain Clean Architecture.
+ *
+ * Key Features:
+ * - Optimistic locking with @Version
+ * - Audit timestamps with Hibernate annotations
+ * - Database indexes for query performance
+ * - Validation constraints
+ * - Proper cascade and fetch strategies
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@Entity
+@Table(
+    name = "{{table_name}}",
+    indexes = {
+        {{table_indexes}}
+    },
+    uniqueConstraints = {
+        {{unique_constraints}}
+    }
+)
+public class {{entity_name}}JpaEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.{{id_strategy}})
+    @Column(name = "id", nullable = false, updatable = false)
+    private {{id_type}} id;
+
+    {{jpa_field_declarations}}
+
+    // ========== Audit Fields ==========
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = "created_by", length = 100)
+    private String createdBy;
+
+    @Column(name = "updated_by", length = 100)
+    private String updatedBy;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
+    /**
+     * Default constructor for JPA.
+     * Required by JPA specification.
+     */
+    public {{entity_name}}JpaEntity() {
+        this.version = 0L;
+    }
+
+    /**
+     * Constructor with all required fields.
+     * Use for creating new entities.
+     */
+    public {{entity_name}}JpaEntity({{constructor_params}}) {
+        {{field_assignments}}
+        this.version = 0L;
+    }
+
+    /**
+     * Full constructor for reconstitution from domain.
+     */
+    public {{entity_name}}JpaEntity({{id_type}} id, {{constructor_params}}, LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
+        this.id = id;
+        {{field_assignments}}
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.version = version;
+    }
+
+    // ========== JPA Lifecycle Callbacks ==========
+
+    @PrePersist
+    protected void prePersist() {
+        if (this.version == null) {
+            this.version = 0L;
+        }
+        {{pre_persist_logic}}
+    }
+
+    @PreUpdate
+    protected void preUpdate() {
+        {{pre_update_logic}}
+    }
+
+    @PostLoad
+    protected void postLoad() {
+        {{post_load_logic}}
+    }
+
+    // ========== Getters and Setters ==========
+
+    public {{id_type}} getId() {
+        return id;
+    }
+
+    public void setId({{id_type}} id) {
+        this.id = id;
+    }
+
+    {{getters_and_setters}}
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(String updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+    // ========== Equality and HashCode ==========
+
+    /**
+     * Entities are equal if they have the same ID.
+     * Uses Objects.equals for null-safety.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        {{entity_name}}JpaEntity that = ({{entity_name}}JpaEntity) o;
+        return id != null && Objects.equals(id, that.id);
+    }
+
+    /**
+     * HashCode based on class to ensure consistency.
+     * Safe across persistent and transient states.
+     */
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "{{entity_name}}JpaEntity{" +
+                "id=" + id +
+                {{toString_fields}} +
+                ", version=" + version +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
+    }
+}

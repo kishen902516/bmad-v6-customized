@@ -1,0 +1,239 @@
+package {{base_package}}.domain.aggregate;
+
+{{imports}}
+import {{base_package}}.domain.event.DomainEvent;
+import java.time.LocalDateTime;
+import java.util.*;
+
+/**
+ * {{aggregate_description}}
+ *
+ * This is an Aggregate Root following DDD principles.
+ *
+ * Aggregate Rules:
+ * 1. External objects can only reference the Aggregate Root
+ * 2. Modifications to internal entities go through the root
+ * 3. The root enforces consistency boundaries
+ * 4. Transactions should not cross aggregate boundaries
+ * 5. Domain events are published for cross-aggregate communication
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public class {{aggregate_name}} {
+
+    // ========== Identity ==========
+
+    private {{id_type}} id;
+
+    // ========== Root Attributes ==========
+
+    {{root_field_declarations}}
+
+    // ========== Internal Entities (Aggregate Members) ==========
+
+    {{internal_entities}}
+
+    // ========== Audit Fields ==========
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String createdBy;
+    private String updatedBy;
+    private Long version; // Optimistic locking
+
+    // ========== Domain Events ==========
+
+    private final List<DomainEvent> domainEvents = new ArrayList<>();
+
+    /**
+     * Constructor for creating new {{aggregate_name}}.
+     * Enforces all aggregate invariants.
+     *
+     {{constructor_params_javadoc}}
+     * @throws IllegalArgumentException if validation fails
+     */
+    public {{aggregate_name}}({{constructor_params}}) {
+        {{validations}}
+        {{field_assignments}}
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        this.version = 0L;
+
+        // Publish domain event
+        registerEvent(new {{aggregate_name}}Created({{event_params}}));
+    }
+
+    /**
+     * Constructor for reconstituting from persistence.
+     *
+     * @param id aggregate ID
+     {{constructor_params_javadoc}}
+     * @param createdAt creation timestamp
+     * @param updatedAt last update timestamp
+     * @param version optimistic lock version
+     */
+    public {{aggregate_name}}({{id_type}} id, {{constructor_params}}, LocalDateTime createdAt, LocalDateTime updatedAt, Long version) {
+        this.id = id;
+        {{field_assignments}}
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.version = version;
+    }
+
+    /**
+     * Protected constructor for ORM and testing.
+     */
+    protected {{aggregate_name}}() {
+        // For ORM frameworks and testing only
+    }
+
+    // ========== Aggregate Business Methods ==========
+
+    {{business_methods}}
+
+    /**
+     * Adds an internal entity to this aggregate.
+     * Enforces aggregate consistency rules.
+     *
+     * @param entity the entity to add
+     * @throws IllegalArgumentException if validation fails
+     * @throws IllegalStateException if aggregate rules are violated
+     */
+    {{add_internal_entity_methods}}
+
+    /**
+     * Removes an internal entity from this aggregate.
+     * Enforces aggregate consistency rules.
+     *
+     * @param entityId the ID of entity to remove
+     * @throws IllegalArgumentException if entity not found
+     */
+    {{remove_internal_entity_methods}}
+
+    // ========== Invariant Enforcement ==========
+
+    /**
+     * Validates all aggregate invariants.
+     * Called after any state change to ensure consistency.
+     *
+     * @throws IllegalStateException if invariants are violated
+     */
+    protected void checkInvariants() {
+        {{invariant_checks}}
+    }
+
+    /**
+     * Marks this aggregate as updated.
+     * Increments version for optimistic locking.
+     *
+     * @param updatedBy the user making the update
+     */
+    protected void markUpdated(String updatedBy) {
+        this.updatedAt = LocalDateTime.now();
+        this.updatedBy = updatedBy;
+        this.version++;
+        checkInvariants();
+    }
+
+    // ========== Domain Events ==========
+
+    /**
+     * Registers a domain event to be published.
+     * Events are published after successful transaction commit.
+     *
+     * @param event the domain event
+     */
+    protected void registerEvent(DomainEvent event) {
+        this.domainEvents.add(event);
+    }
+
+    /**
+     * Gets all domain events and clears the list.
+     * Called by infrastructure after transaction commit.
+     *
+     * @return unmodifiable list of domain events
+     */
+    public List<DomainEvent> getDomainEvents() {
+        return Collections.unmodifiableList(new ArrayList<>(domainEvents));
+    }
+
+    /**
+     * Clears domain events.
+     * Called after events have been published.
+     */
+    public void clearDomainEvents() {
+        this.domainEvents.clear();
+    }
+
+    // ========== Getters (Read-Only Access) ==========
+
+    public {{id_type}} getId() {
+        return id;
+    }
+
+    {{getters}}
+
+    /**
+     * Returns unmodifiable view of internal entities.
+     * External code cannot modify the aggregate internals.
+     */
+    {{internal_entity_getters}}
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    // ========== Package-Private Setters ==========
+
+    void setId({{id_type}} id) {
+        this.id = id;
+    }
+
+    {{package_private_setters}}
+
+    // ========== Equality and HashCode ==========
+
+    /**
+     * Aggregates are equal if they have the same ID.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        {{aggregate_name}} that = ({{aggregate_name}}) o;
+        return id != null && Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "{{aggregate_name}}{" +
+                "id=" + id +
+                {{toString_fields}} +
+                ", version=" + version +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
+    }
+}

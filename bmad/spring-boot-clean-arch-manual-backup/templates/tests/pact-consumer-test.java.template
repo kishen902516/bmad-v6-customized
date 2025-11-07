@@ -1,0 +1,190 @@
+package {{base_package}}.presentation.rest.pact;
+
+import au.com.dius.pact.consumer.dsl.DslPart;
+import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
+import au.com.dius.pact.consumer.dsl.PactDslWithProvider;
+import au.com.dius.pact.consumer.junit5.PactConsumerTestExt;
+import au.com.dius.pact.consumer.junit5.PactTestFor;
+import au.com.dius.pact.core.model.PactSpecVersion;
+import au.com.dius.pact.core.model.V4Pact;
+import au.com.dius.pact.core.model.annotations.Pact;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Pact Consumer tests for {{entity_name}}API.
+ *
+ * These tests define the contract from the consumer's perspective.
+ * They generate a Pact file that can be verified by the provider.
+ *
+ * Consumer: {{consumer_name}}
+ * Provider: {{provider_name}}
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@ExtendWith(PactConsumerTestExt.class)
+@DisplayName("{{entity_name}} API Consumer Contract Tests")
+@PactTestFor(providerName = "{{provider_name}}", pactVersion = PactSpecVersion.V4)
+class {{entity_name}}ConsumerPactTest {
+
+    /**
+     * Pact definition for creating a {{entity_name}}.
+     *
+     * Defines expected request and response for POST {{endpoint_path}}
+     */
+    @Pact(consumer = "{{consumer_name}}")
+    public V4Pact create{{entity_name}}Pact(PactDslWithProvider builder) {
+        DslPart requestBody = new PactDslJsonBody()
+                {{request_body_fields}};
+
+        DslPart responseBody = new PactDslJsonBody()
+                {{response_body_fields}};
+
+        return builder
+                .given("{{entity_name}} can be created")
+                .uponReceiving("a request to create a {{entity_name}}")
+                    .method("POST")
+                    .path("{{endpoint_path}}")
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(requestBody)
+                .willRespondWith()
+                    .status(HttpStatus.CREATED.value())
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(responseBody)
+                .toPact(V4Pact.class);
+    }
+
+    /**
+     * Test: Consumer can create a {{entity_name}}.
+     */
+    @Test
+    @PactTestFor(pactMethod = "create{{entity_name}}Pact")
+    @DisplayName("Should create {{entity_name}} and receive 201 Created")
+    void testCreate{{entity_name}}(MockServer mockServer) throws IOException, InterruptedException {
+        // Given
+        String requestJson = """
+                {{sample_request_json}}
+                """;
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mockServer.getUrl() + "{{endpoint_path}}"))
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+                .build();
+
+        // When
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Then
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.CREATED.value());
+        assertThat(response.headers().firstValue("Content-Type"))
+                .isPresent()
+                .get()
+                .asString()
+                .contains(MediaType.APPLICATION_JSON_VALUE);
+        assertThat(response.body()).isNotEmpty();
+        {{response_assertions}}
+    }
+
+    /**
+     * Pact definition for retrieving a {{entity_name}} by ID.
+     */
+    @Pact(consumer = "{{consumer_name}}")
+    public V4Pact get{{entity_name}}ByIdPact(PactDslWithProvider builder) {
+        DslPart responseBody = new PactDslJsonBody()
+                {{response_body_fields}};
+
+        return builder
+                .given("{{entity_name}} with ID {{test_id}} exists")
+                .uponReceiving("a request to get {{entity_name}} by ID")
+                    .method("GET")
+                    .path("{{endpoint_path}}/{{test_id}}")
+                .willRespondWith()
+                    .status(HttpStatus.OK.value())
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(responseBody)
+                .toPact(V4Pact.class);
+    }
+
+    /**
+     * Test: Consumer can retrieve a {{entity_name}} by ID.
+     */
+    @Test
+    @PactTestFor(pactMethod = "get{{entity_name}}ByIdPact")
+    @DisplayName("Should retrieve {{entity_name}} by ID and receive 200 OK")
+    void testGet{{entity_name}}ById(MockServer mockServer) throws IOException, InterruptedException {
+        // Given
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mockServer.getUrl() + "{{endpoint_path}}/{{test_id}}"))
+                .GET()
+                .build();
+
+        // When
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Then
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.value());
+        assertThat(response.body()).isNotEmpty();
+        {{response_assertions}}
+    }
+
+    /**
+     * Pact definition for {{entity_name}} not found scenario.
+     */
+    @Pact(consumer = "{{consumer_name}}")
+    public V4Pact get{{entity_name}}NotFoundPact(PactDslWithProvider builder) {
+        DslPart errorResponse = new PactDslJsonBody()
+                .integerType("status", 404)
+                .stringType("error", "Resource not found")
+                .stringMatcher("message", ".*not found.*", "{{entity_name}} not found");
+
+        return builder
+                .given("{{entity_name}} with ID {{non_existent_id}} does not exist")
+                .uponReceiving("a request to get non-existent {{entity_name}}")
+                    .method("GET")
+                    .path("{{endpoint_path}}/{{non_existent_id}}")
+                .willRespondWith()
+                    .status(HttpStatus.NOT_FOUND.value())
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(errorResponse)
+                .toPact(V4Pact.class);
+    }
+
+    /**
+     * Test: Consumer handles 404 when {{entity_name}} not found.
+     */
+    @Test
+    @PactTestFor(pactMethod = "get{{entity_name}}NotFoundPact")
+    @DisplayName("Should receive 404 when {{entity_name}} not found")
+    void testGet{{entity_name}}NotFound(MockServer mockServer) throws IOException, InterruptedException {
+        // Given
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mockServer.getUrl() + "{{endpoint_path}}/{{non_existent_id}}"))
+                .GET()
+                .build();
+
+        // When
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Then
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThat(response.body()).contains("not found");
+    }
+
+    {{additional_pact_interactions}}
+}

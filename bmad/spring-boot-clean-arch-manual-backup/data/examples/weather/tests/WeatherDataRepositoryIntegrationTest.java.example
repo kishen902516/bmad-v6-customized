@@ -1,0 +1,262 @@
+package {{base_package}}.infrastructure.adapter.persistence;
+
+import {{base_package}}.domain.entity.WeatherData;
+import {{base_package}}.domain.valueobject.Location;
+import {{base_package}}.domain.valueobject.Temperature;
+import {{base_package}}.domain.valueobject.TemperatureUnit;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.*;
+
+/**
+ * Integration tests for WeatherDataRepositoryImpl.
+ *
+ * Tests repository implementation with real PostgreSQL database using TestContainers.
+ * Verifies CRUD operations and custom queries against an actual database.
+ */
+@DataJpaTest
+@Testcontainers
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import(WeatherDataRepositoryImpl.class)
+@DisplayName("WeatherData Repository Integration Tests")
+class WeatherDataRepositoryIntegrationTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
+            .withDatabaseName("weatherdb")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+    }
+
+    @Autowired
+    private WeatherDataRepositoryImpl repository;
+
+    private WeatherData testWeatherData;
+
+    @BeforeEach
+    void setUp() {
+        testWeatherData = new WeatherData(
+                UUID.randomUUID(),
+                new Location("New York", 40.7128, -74.0060),
+                new Temperature(25.0, TemperatureUnit.CELSIUS),
+                65.0,
+                15.0,
+                LocalDateTime.now()
+        );
+    }
+
+    @Test
+    @DisplayName("Should save and retrieve weather data")
+    void shouldSaveAndRetrieve() {
+        // When
+        WeatherData saved = repository.save(testWeatherData);
+
+        // Then
+        assertThat(saved).isNotNull();
+        assertThat(saved.getId()).isNotNull();
+
+        // Retrieve and verify
+        Optional<WeatherData> retrieved = repository.findById(saved.getId());
+        assertThat(retrieved).isPresent();
+        assertThat(retrieved.get().getLocation().city()).isEqualTo("New York");
+        assertThat(retrieved.get().getTemperature().value()).isEqualTo(25.0);
+        assertThat(retrieved.get().getHumidity()).isEqualTo(65.0);
+    }
+
+    @Test
+    @DisplayName("Should find all weather data entries")
+    void shouldFindAll() {
+        // Given
+        WeatherData entity1 = repository.save(testWeatherData);
+        WeatherData entity2 = repository.save(new WeatherData(
+                UUID.randomUUID(),
+                new Location("London", 51.5074, -0.1278),
+                new Temperature(18.0, TemperatureUnit.CELSIUS),
+                70.0,
+                20.0,
+                LocalDateTime.now()
+        ));
+
+        // When
+        List<WeatherData> all = repository.findAll();
+
+        // Then
+        assertThat(all).hasSize(2);
+        assertThat(all).extracting(wd -> wd.getLocation().city())
+                .containsExactlyInAnyOrder("New York", "London");
+    }
+
+    @Test
+    @DisplayName("Should delete weather data by ID")
+    void shouldDeleteById() {
+        // Given
+        WeatherData saved = repository.save(testWeatherData);
+        UUID id = saved.getId();
+
+        // When
+        repository.deleteById(id);
+
+        // Then
+        Optional<WeatherData> retrieved = repository.findById(id);
+        assertThat(retrieved).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should check if weather data exists by ID")
+    void shouldCheckExistence() {
+        // Given
+        WeatherData saved = repository.save(testWeatherData);
+
+        // When / Then
+        assertThat(repository.existsById(saved.getId())).isTrue();
+        assertThat(repository.existsById(UUID.randomUUID())).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should return empty Optional when entity not found")
+    void shouldReturnEmptyWhenNotFound() {
+        // When
+        Optional<WeatherData> retrieved = repository.findById(UUID.randomUUID());
+
+        // Then
+        assertThat(retrieved).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should find weather data by city")
+    void shouldFindByCity() {
+        // Given
+        repository.save(testWeatherData);
+        repository.save(new WeatherData(
+                UUID.randomUUID(),
+                new Location("New York", 40.7589, -73.9851),  // Different location, same city
+                new Temperature(26.0, TemperatureUnit.CELSIUS),
+                60.0,
+                12.0,
+                LocalDateTime.now()
+        ));
+        repository.save(new WeatherData(
+                UUID.randomUUID(),
+                new Location("London", 51.5074, -0.1278),
+                new Temperature(18.0, TemperatureUnit.CELSIUS),
+                70.0,
+                20.0,
+                LocalDateTime.now()
+        ));
+
+        // When
+        List<WeatherData> newYorkData = repository.findByCity("New York");
+
+        // Then
+        assertThat(newYorkData).hasSize(2);
+        assertThat(newYorkData).allMatch(wd -> wd.getLocation().city().equals("New York"));
+    }
+
+    @Test
+    @DisplayName("Should find recent weather data")
+    void shouldFindRecentWeatherData() {
+        // Given
+        LocalDateTime now = LocalDateTime.now();
+        repository.save(new WeatherData(
+                UUID.randomUUID(),
+                new Location("New York", 40.7128, -74.0060),
+                new Temperature(25.0, TemperatureUnit.CELSIUS),
+                65.0,
+                15.0,
+                now.minusHours(2)  // Old data
+        ));
+        repository.save(new WeatherData(
+                UUID.randomUUID(),
+                new Location("London", 51.5074, -0.1278),
+                new Temperature(18.0, TemperatureUnit.CELSIUS),
+                70.0,
+                20.0,
+                now.minusMinutes(30)  // Recent data
+        ));
+
+        // When
+        List<WeatherData> recentData = repository.findRecentWeatherData(now.minusHours(1));
+
+        // Then
+        assertThat(recentData).hasSize(1);
+        assertThat(recentData.get(0).getLocation().city()).isEqualTo("London");
+    }
+
+    @Test
+    @DisplayName("Should update existing weather data")
+    void shouldUpdateWeatherData() {
+        // Given
+        WeatherData saved = repository.save(testWeatherData);
+        UUID id = saved.getId();
+
+        // When - Update temperature and humidity
+        WeatherData updated = new WeatherData(
+                id,
+                saved.getLocation(),
+                new Temperature(30.0, TemperatureUnit.CELSIUS),  // Updated
+                75.0,  // Updated humidity
+                saved.getWindSpeed(),
+                saved.getRecordedAt()
+        );
+        repository.save(updated);
+
+        // Then
+        Optional<WeatherData> retrieved = repository.findById(id);
+        assertThat(retrieved).isPresent();
+        assertThat(retrieved.get().getTemperature().value()).isEqualTo(30.0);
+        assertThat(retrieved.get().getHumidity()).isEqualTo(75.0);
+    }
+
+    @Test
+    @DisplayName("Should handle concurrent saves correctly")
+    void shouldHandleConcurrentSaves() {
+        // Given
+        WeatherData data1 = new WeatherData(
+                UUID.randomUUID(),
+                new Location("Paris", 48.8566, 2.3522),
+                new Temperature(22.0, TemperatureUnit.CELSIUS),
+                55.0,
+                10.0,
+                LocalDateTime.now()
+        );
+        WeatherData data2 = new WeatherData(
+                UUID.randomUUID(),
+                new Location("Tokyo", 35.6762, 139.6503),
+                new Temperature(28.0, TemperatureUnit.CELSIUS),
+                80.0,
+                5.0,
+                LocalDateTime.now()
+        );
+
+        // When
+        WeatherData saved1 = repository.save(data1);
+        WeatherData saved2 = repository.save(data2);
+
+        // Then
+        assertThat(saved1.getId()).isNotEqualTo(saved2.getId());
+        assertThat(repository.findAll()).hasSize(2);
+    }
+}

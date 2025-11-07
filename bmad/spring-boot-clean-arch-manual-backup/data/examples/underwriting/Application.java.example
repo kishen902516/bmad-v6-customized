@@ -1,0 +1,374 @@
+package {{base_package}}.domain.entity;
+
+import {{base_package}}.domain.valueobject.*;
+import {{base_package}}.domain.exception.InvalidApplicationStateException;
+
+import java.time.LocalDateTime;
+import java.util.Objects;
+
+/**
+ * Application Aggregate Root
+ *
+ * Represents an insurance application submitted by an applicant.
+ * Manages the application lifecycle and enforces underwriting business rules.
+ *
+ * State Machine:
+ * DRAFT → SUBMITTED → UNDER_ASSESSMENT → APPROVED/REJECTED → ACTIVE
+ *
+ * @author Spring Boot Clean Architecture Generator
+ */
+public class Application {
+
+    private ApplicationNumber applicationNumber;
+    private ApplicantDetails applicantDetails;
+    private CoverageRequest coverageRequest;
+    private ApplicationStatus status;
+    private RiskAssessment riskAssessment;
+    private Money quotedPremium;
+    private String approvalReason;
+    private String rejectionReason;
+    private String approvedBy;
+    private LocalDateTime submittedAt;
+    private LocalDateTime assessedAt;
+    private LocalDateTime decidedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    /**
+     * Constructor for creating a new application (DRAFT status)
+     */
+    public Application(
+            ApplicantDetails applicantDetails,
+            CoverageRequest coverageRequest) {
+
+        validateConstructorParameters(applicantDetails, coverageRequest);
+        validateBusinessRules(applicantDetails, coverageRequest);
+
+        this.applicationNumber = ApplicationNumber.generate();
+        this.applicantDetails = applicantDetails;
+        this.coverageRequest = coverageRequest;
+        this.status = ApplicationStatus.DRAFT;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Constructor for reconstituting an application from persistence
+     */
+    public Application(
+            ApplicationNumber applicationNumber,
+            ApplicantDetails applicantDetails,
+            CoverageRequest coverageRequest,
+            ApplicationStatus status,
+            RiskAssessment riskAssessment,
+            Money quotedPremium,
+            String approvalReason,
+            String rejectionReason,
+            String approvedBy,
+            LocalDateTime submittedAt,
+            LocalDateTime assessedAt,
+            LocalDateTime decidedAt,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+
+        this.applicationNumber = applicationNumber;
+        this.applicantDetails = applicantDetails;
+        this.coverageRequest = coverageRequest;
+        this.status = status;
+        this.riskAssessment = riskAssessment;
+        this.quotedPremium = quotedPremium;
+        this.approvalReason = approvalReason;
+        this.rejectionReason = rejectionReason;
+        this.approvedBy = approvedBy;
+        this.submittedAt = submittedAt;
+        this.assessedAt = assessedAt;
+        this.decidedAt = decidedAt;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    // ==================== Business Methods ====================
+
+    /**
+     * Submit the application for underwriting
+     * Transition: DRAFT → SUBMITTED
+     *
+     * @throws InvalidApplicationStateException if not in DRAFT status
+     */
+    public void submit() {
+        if (status != ApplicationStatus.DRAFT) {
+            throw new InvalidApplicationStateException(
+                String.format("Cannot submit application in status %s. Must be DRAFT.", status)
+            );
+        }
+
+        this.status = ApplicationStatus.SUBMITTED;
+        this.submittedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Record the risk assessment result
+     * Transition: SUBMITTED → UNDER_ASSESSMENT
+     *
+     * @param riskAssessment The result of risk assessment from UnderwritingRulesEngine
+     * @throws InvalidApplicationStateException if not in SUBMITTED status
+     */
+    public void recordRiskAssessment(RiskAssessment riskAssessment) {
+        if (status != ApplicationStatus.SUBMITTED) {
+            throw new InvalidApplicationStateException(
+                String.format("Cannot assess application in status %s. Must be SUBMITTED.", status)
+            );
+        }
+
+        Objects.requireNonNull(riskAssessment, "Risk assessment is required");
+
+        this.riskAssessment = riskAssessment;
+        this.status = ApplicationStatus.UNDER_ASSESSMENT;
+        this.assessedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Approve the application with premium quote
+     * Transition: UNDER_ASSESSMENT → APPROVED
+     *
+     * @param quotedPremium The annual premium amount
+     * @param approvalReason The reason for approval
+     * @param approvedBy The underwriter who approved (or SYSTEM for auto-approval)
+     * @throws InvalidApplicationStateException if not in UNDER_ASSESSMENT status
+     */
+    public void approve(Money quotedPremium, String approvalReason, String approvedBy) {
+        if (status != ApplicationStatus.UNDER_ASSESSMENT) {
+            throw new InvalidApplicationStateException(
+                String.format("Cannot approve application in status %s. Must be UNDER_ASSESSMENT.", status)
+            );
+        }
+
+        Objects.requireNonNull(quotedPremium, "Quoted premium is required");
+        Objects.requireNonNull(approvalReason, "Approval reason is required");
+        Objects.requireNonNull(approvedBy, "ApprovedBy is required");
+
+        if (approvalReason.isBlank()) {
+            throw new IllegalArgumentException("Approval reason cannot be blank");
+        }
+
+        this.quotedPremium = quotedPremium;
+        this.approvalReason = approvalReason;
+        this.approvedBy = approvedBy;
+        this.status = ApplicationStatus.APPROVED;
+        this.decidedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Reject the application with reason
+     * Transition: UNDER_ASSESSMENT → REJECTED
+     *
+     * @param rejectionReason The reason for rejection
+     * @throws InvalidApplicationStateException if not in UNDER_ASSESSMENT status
+     */
+    public void reject(String rejectionReason) {
+        if (status != ApplicationStatus.UNDER_ASSESSMENT) {
+            throw new InvalidApplicationStateException(
+                String.format("Cannot reject application in status %s. Must be UNDER_ASSESSMENT.", status)
+            );
+        }
+
+        Objects.requireNonNull(rejectionReason, "Rejection reason is required");
+
+        if (rejectionReason.isBlank()) {
+            throw new IllegalArgumentException("Rejection reason cannot be blank");
+        }
+
+        this.rejectionReason = rejectionReason;
+        this.status = ApplicationStatus.REJECTED;
+        this.decidedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Activate the application after payment received
+     * Transition: APPROVED → ACTIVE
+     *
+     * @throws InvalidApplicationStateException if not in APPROVED status
+     */
+    public void activate() {
+        if (status != ApplicationStatus.APPROVED) {
+            throw new InvalidApplicationStateException(
+                String.format("Cannot activate application in status %s. Must be APPROVED.", status)
+            );
+        }
+
+        this.status = ApplicationStatus.ACTIVE;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Check if application can be assessed
+     */
+    public boolean canBeAssessed() {
+        return status == ApplicationStatus.SUBMITTED;
+    }
+
+    /**
+     * Check if application can be approved or rejected
+     */
+    public boolean canBeDecided() {
+        return status == ApplicationStatus.UNDER_ASSESSMENT;
+    }
+
+    /**
+     * Check if application requires manual review based on risk assessment
+     */
+    public boolean requiresManualReview() {
+        if (riskAssessment == null) {
+            return false;
+        }
+        return riskAssessment.recommendation() == UnderwritingRecommendation.MANUAL_REVIEW_REQUIRED;
+    }
+
+    /**
+     * Get the risk level (LOW, MEDIUM, HIGH, VERY_HIGH)
+     */
+    public RiskLevel getRiskLevel() {
+        if (riskAssessment == null) {
+            return null;
+        }
+        return riskAssessment.riskScore().getRiskLevel();
+    }
+
+    // ==================== Validation ====================
+
+    private void validateConstructorParameters(
+            ApplicantDetails applicantDetails,
+            CoverageRequest coverageRequest) {
+
+        Objects.requireNonNull(applicantDetails, "Applicant details are required");
+        Objects.requireNonNull(coverageRequest, "Coverage request is required");
+    }
+
+    private void validateBusinessRules(
+            ApplicantDetails applicantDetails,
+            CoverageRequest coverageRequest) {
+
+        // Rule: Applicant must be between 18 and 80 years old
+        if (applicantDetails.age() < 18 || applicantDetails.age() > 80) {
+            throw new IllegalArgumentException(
+                String.format("Applicant age must be between 18 and 80. Got: %d", applicantDetails.age())
+            );
+        }
+
+        // Rule: Coverage amount must be within limits ($10K - $5M)
+        BigDecimal minCoverage = BigDecimal.valueOf(10_000);
+        BigDecimal maxCoverage = BigDecimal.valueOf(5_000_000);
+        BigDecimal requestedAmount = coverageRequest.amount().amount();
+
+        if (requestedAmount.compareTo(minCoverage) < 0) {
+            throw new IllegalArgumentException(
+                String.format("Coverage amount must be at least %s", minCoverage)
+            );
+        }
+
+        if (requestedAmount.compareTo(maxCoverage) > 0) {
+            throw new IllegalArgumentException(
+                String.format("Coverage amount cannot exceed %s", maxCoverage)
+            );
+        }
+
+        // Rule: Health declaration required for coverage above $500K
+        BigDecimal highCoverageThreshold = BigDecimal.valueOf(500_000);
+        if (requestedAmount.compareTo(highCoverageThreshold) > 0) {
+            // In a real system, you'd check if health declaration documents are attached
+            // This is a simplified validation
+            if (applicantDetails.healthStatus() == null) {
+                throw new IllegalArgumentException(
+                    "Health declaration required for coverage above $500,000"
+                );
+            }
+        }
+    }
+
+    // ==================== Getters ====================
+
+    public ApplicationNumber getApplicationNumber() {
+        return applicationNumber;
+    }
+
+    public ApplicantDetails getApplicantDetails() {
+        return applicantDetails;
+    }
+
+    public CoverageRequest getCoverageRequest() {
+        return coverageRequest;
+    }
+
+    public ApplicationStatus getStatus() {
+        return status;
+    }
+
+    public RiskAssessment getRiskAssessment() {
+        return riskAssessment;
+    }
+
+    public Money getQuotedPremium() {
+        return quotedPremium;
+    }
+
+    public String getApprovalReason() {
+        return approvalReason;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public String getApprovedBy() {
+        return approvedBy;
+    }
+
+    public LocalDateTime getSubmittedAt() {
+        return submittedAt;
+    }
+
+    public LocalDateTime getAssessedAt() {
+        return assessedAt;
+    }
+
+    public LocalDateTime getDecidedAt() {
+        return decidedAt;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    // ==================== equals, hashCode, toString ====================
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Application that = (Application) o;
+        return Objects.equals(applicationNumber, that.applicationNumber);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(applicationNumber);
+    }
+
+    @Override
+    public String toString() {
+        return "Application{" +
+                "applicationNumber=" + applicationNumber +
+                ", applicant=" + applicantDetails.name() +
+                ", status=" + status +
+                ", coverage=" + coverageRequest.amount() +
+                '}';
+    }
+}

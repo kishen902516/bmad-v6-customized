@@ -1,0 +1,73 @@
+package {{base_package}}.domain.entity;
+
+{{imports}}
+
+/**
+ * {{entity_description}}
+ *
+ * This is a domain entity following Clean Architecture principles.
+ * It contains business logic and enforces invariants.
+ * It has no framework dependencies (no JPA annotations).
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public class {{entity_name}} {
+
+    private {{id_type}} id;
+    {{field_declarations}}
+
+    /**
+     * Constructor with required fields.
+     * Enforces invariants and validates input.
+     *
+     {{constructor_params_javadoc}}
+     * @throws IllegalArgumentException if validation fails
+     */
+    public {{entity_name}}({{constructor_params}}) {
+        {{validations}}
+        {{field_assignments}}
+    }
+
+    /**
+     * Default constructor for ORM frameworks.
+     * Should not be used in business logic.
+     */
+    protected {{entity_name}}() {
+        // For ORM frameworks only
+    }
+
+    // Business Methods
+    {{business_methods}}
+
+    // Getters
+    public {{id_type}} getId() {
+        return id;
+    }
+
+    {{getters}}
+
+    // Package-private setters (controlled mutation)
+    {{setters}}
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        {{entity_name}} that = ({{entity_name}}) o;
+        return id != null && id.equals(that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "{{entity_name}}{" +
+                "id=" + id +
+                {{toString_fields}} +
+                '}';
+    }
+}

@@ -1,0 +1,118 @@
+package {{base_package}}.domain.valueobject;
+
+{{imports}}
+import java.util.Objects;
+
+/**
+ * {{value_object_description}}
+ *
+ * This is a Value Object (immutable) implemented as a Java 21 Record.
+ * Value Objects are:
+ * - Defined by their attributes, not identity
+ * - Immutable (no setters)
+ * - Self-validating (validate on construction)
+ * - Side-effect free
+ *
+ * Examples: Money, Address, Email, DateRange, Percentage
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public record {{value_object_name}}({{record_components}}) {
+
+    /**
+     * Compact constructor with validation.
+     * Enforces invariants for the value object.
+     * Fails fast with clear error messages.
+     *
+     * @throws IllegalArgumentException if validation fails
+     */
+    public {{value_object_name}} {
+        {{validations}}
+    }
+
+    // ========== Factory Methods ==========
+
+    /**
+     * Factory method for creating {{value_object_name}} with validation.
+     * Preferred over direct constructor for better readability.
+     *
+     {{factory_params_javadoc}}
+     * @return validated {{value_object_name}} instance
+     * @throws IllegalArgumentException if validation fails
+     */
+    public static {{value_object_name}} of({{factory_params}}) {
+        return new {{value_object_name}}({{factory_args}});
+    }
+
+    {{additional_factory_methods}}
+
+    // ========== Derived Properties ==========
+
+    {{derived_methods}}
+
+    // ========== Business Operations ==========
+
+    {{business_methods}}
+
+    // ========== Validation Helpers ==========
+
+    /**
+     * Validates that a string is not null or blank.
+     *
+     * @param value the string to validate
+     * @param fieldName the field name for error messages
+     * @throws IllegalArgumentException if validation fails
+     */
+    private static void requireNonBlank(String value, String fieldName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " cannot be null or blank");
+        }
+    }
+
+    /**
+     * Validates that a value is not null.
+     *
+     * @param value the value to validate
+     * @param fieldName the field name for error messages
+     * @throws IllegalArgumentException if validation fails
+     */
+    private static void requireNonNull(Object value, String fieldName) {
+        if (value == null) {
+            throw new IllegalArgumentException(fieldName + " cannot be null");
+        }
+    }
+
+    /**
+     * Validates that a number is positive.
+     *
+     * @param value the number to validate
+     * @param fieldName the field name for error messages
+     * @throws IllegalArgumentException if validation fails
+     */
+    private static void requirePositive(Number value, String fieldName) {
+        requireNonNull(value, fieldName);
+        if (value.doubleValue() <= 0) {
+            throw new IllegalArgumentException(fieldName + " must be positive, got: " + value);
+        }
+    }
+
+    /**
+     * Validates that a number is within range (inclusive).
+     *
+     * @param value the number to validate
+     * @param min minimum value (inclusive)
+     * @param max maximum value (inclusive)
+     * @param fieldName the field name for error messages
+     * @throws IllegalArgumentException if validation fails
+     */
+    private static void requireInRange(Number value, Number min, Number max, String fieldName) {
+        requireNonNull(value, fieldName);
+        double val = value.doubleValue();
+        if (val < min.doubleValue() || val > max.doubleValue()) {
+            throw new IllegalArgumentException(
+                fieldName + " must be between " + min + " and " + max + ", got: " + value
+            );
+        }
+    }
+}

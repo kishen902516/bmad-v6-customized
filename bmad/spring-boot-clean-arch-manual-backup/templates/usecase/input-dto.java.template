@@ -1,0 +1,30 @@
+package {{base_package}}.application.dto;
+
+import jakarta.validation.constraints.*;
+{{imports}}
+
+/**
+ * Input DTO for {{use_case_name}} use case.
+ *
+ * This Record represents the input data for the use case.
+ * It is immutable and validates itself on construction.
+ * Uses Jakarta Bean Validation annotations for declarative validation.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public record {{use_case_name}}Input(
+    {{record_components_with_validation}}
+) {
+
+    /**
+     * Compact constructor with additional validation logic.
+     *
+     * @throws IllegalArgumentException if business validation fails
+     */
+    public {{use_case_name}}Input {
+        {{custom_validations}}
+    }
+
+    {{helper_methods}}
+}

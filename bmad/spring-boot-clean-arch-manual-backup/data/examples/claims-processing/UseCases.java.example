@@ -1,0 +1,260 @@
+package {{base_package}}.application.service;
+
+import {{base_package}}.domain.entity.Claim;
+import {{base_package}}.domain.port.ClaimRepository;
+import {{base_package}}.domain.valueobject.*;
+import {{base_package}}.application.usecase.SubmitClaimUseCase;
+import {{base_package}}.application.usecase.ProcessClaimUseCase;
+import {{base_package}}.application.dto.*;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
+
+// ==================== SubmitClaimUseCase ====================
+
+/**
+ * Submit Claim Use Case Implementation
+ *
+ * Creates a new insurance claim and submits it for processing
+ *
+ * Business Flow:
+ * 1. Validate input data
+ * 2. Create new Claim entity (DRAFT status)
+ * 3. Submit the claim (DRAFT → SUBMITTED)
+ * 4. Persist to repository
+ * 5. Return claim details
+ */
+@Service
+@Transactional
+public class SubmitClaimService implements SubmitClaimUseCase {
+
+    private static final Logger logger = LoggerFactory.getLogger(SubmitClaimService.class);
+    private final ClaimRepository claimRepository;
+
+    public SubmitClaimService(ClaimRepository claimRepository) {
+        this.claimRepository = Objects.requireNonNull(claimRepository, "ClaimRepository is required");
+    }
+
+    @Override
+    public SubmitClaimOutput execute(SubmitClaimInput input) {
+        logger.info("Submitting claim for policy: {}", input.policyNumber());
+
+        // Validate input
+        validateInput(input);
+
+        // Create new claim entity
+        Claim claim = new Claim(
+            input.policyNumber(),
+            input.claimedAmount(),
+            input.incidentDetails(),
+            input.submittedBy()
+        );
+
+        // Submit the claim (state transition: DRAFT → SUBMITTED)
+        claim.submit();
+
+        // Persist
+        Claim savedClaim = claimRepository.save(claim);
+
+        logger.info("Claim submitted successfully: {}", savedClaim.getClaimNumber());
+
+        // Return output
+        return new SubmitClaimOutput(
+            savedClaim.getClaimNumber(),
+            savedClaim.getStatus(),
+            savedClaim.getClaimedAmount(),
+            savedClaim.getSubmittedAt()
+        );
+    }
+
+    private void validateInput(SubmitClaimInput input) {
+        Objects.requireNonNull(input, "SubmitClaimInput is required");
+        Objects.requireNonNull(input.policyNumber(), "Policy number is required");
+        Objects.requireNonNull(input.claimedAmount(), "Claimed amount is required");
+        Objects.requireNonNull(input.incidentDetails(), "Incident details are required");
+        Objects.requireNonNull(input.submittedBy(), "SubmittedBy is required");
+
+        // Additional business validations
+        // - Verify policy exists and is active (would call PolicyRepository)
+        // - Verify claim amount is within policy limits
+        // - Verify incident date is within policy coverage period
+        // These are omitted for brevity but should be implemented
+    }
+}
+
+// ==================== ProcessClaimUseCase ====================
+
+/**
+ * Process Claim Use Case Implementation
+ *
+ * Adjudicates a claim by approving or rejecting it with reasoning
+ *
+ * Business Flow:
+ * 1. Retrieve claim by claim number
+ * 2. Validate claim can be processed
+ * 3. Approve or reject with adjudication result
+ * 4. Update claim in repository
+ * 5. Return processing result
+ *
+ * Note: This use case could be split into ApproveClaimUseCase and RejectClaimUseCase
+ * for better SRP, but combined here for brevity
+ */
+@Service
+@Transactional
+public class ProcessClaimService implements ProcessClaimUseCase {
+
+    private static final Logger logger = LoggerFactory.getLogger(ProcessClaimService.class);
+    private final ClaimRepository claimRepository;
+
+    public ProcessClaimService(ClaimRepository claimRepository) {
+        this.claimRepository = Objects.requireNonNull(claimRepository, "ClaimRepository is required");
+    }
+
+    @Override
+    public ProcessClaimOutput execute(ProcessClaimInput input) {
+        logger.info("Processing claim: {}", input.claimNumber());
+
+        // Validate input
+        validateInput(input);
+
+        // Retrieve claim
+        Claim claim = claimRepository.findByClaimNumber(input.claimNumber())
+            .orElseThrow(() -> new ClaimNotFoundException(
+                "Claim not found: " + input.claimNumber()
+            ));
+
+        // Ensure claim is in correct state for processing
+        if (!claim.canBeProcessed()) {
+            throw new InvalidClaimStateException(
+                String.format("Claim %s cannot be processed in status %s",
+                    claim.getClaimNumber(), claim.getStatus())
+            );
+        }
+
+        // Transition to UNDER_REVIEW if not already
+        if (claim.getStatus() == ClaimStatus.SUBMITTED) {
+            claim.startReview();
+        }
+
+        // Approve or reject based on input
+        if (input.approved()) {
+            claim.approve(
+                input.approvedAmount(),
+                input.reason(),
+                input.adjusterNotes(),
+                input.processedBy()
+            );
+            logger.info("Claim {} approved for {}", claim.getClaimNumber(), input.approvedAmount());
+        } else {
+            claim.reject(
+                input.reason(),
+                input.adjusterNotes(),
+                input.processedBy()
+            );
+            logger.info("Claim {} rejected. Reason: {}", claim.getClaimNumber(), input.reason());
+        }
+
+        // Update in repository
+        Claim updatedClaim = claimRepository.save(claim);
+
+        // Return output
+        return new ProcessClaimOutput(
+            updatedClaim.getClaimNumber(),
+            updatedClaim.getStatus(),
+            updatedClaim.getAdjudicationResult(),
+            updatedClaim.getProcessedAt()
+        );
+    }
+
+    private void validateInput(ProcessClaimInput input) {
+        Objects.requireNonNull(input, "ProcessClaimInput is required");
+        Objects.requireNonNull(input.claimNumber(), "Claim number is required");
+        Objects.requireNonNull(input.reason(), "Processing reason is required");
+        Objects.requireNonNull(input.processedBy(), "ProcessedBy is required");
+
+        if (input.approved()) {
+            Objects.requireNonNull(input.approvedAmount(), "Approved amount is required when approving");
+        }
+
+        // Additional business validations
+        // - Verify adjuster has authority to process claims
+        // - Check if approved amount is within adjuster's authority limit
+        // - Verify all required documentation is attached
+        // These are omitted for brevity but should be implemented
+    }
+}
+
+// ==================== DTOs ====================
+
+/**
+ * Input DTO for SubmitClaimUseCase
+ */
+public record SubmitClaimInput(
+    String policyNumber,
+    ClaimAmount claimedAmount,
+    IncidentDetails incidentDetails,
+    String submittedBy
+) {}
+
+/**
+ * Output DTO for SubmitClaimUseCase
+ */
+public record SubmitClaimOutput(
+    ClaimNumber claimNumber,
+    ClaimStatus status,
+    ClaimAmount claimedAmount,
+    java.time.LocalDateTime submittedAt
+) {}
+
+/**
+ * Input DTO for ProcessClaimUseCase
+ */
+public record ProcessClaimInput(
+    ClaimNumber claimNumber,
+    boolean approved,
+    ClaimAmount approvedAmount,  // Required if approved = true
+    String reason,
+    String adjusterNotes,
+    String processedBy
+) {}
+
+/**
+ * Output DTO for ProcessClaimUseCase
+ */
+public record ProcessClaimOutput(
+    ClaimNumber claimNumber,
+    ClaimStatus status,
+    AdjudicationResult adjudicationResult,
+    java.time.LocalDateTime processedAt
+) {}
+
+// ==================== Use Case Interfaces ====================
+
+/**
+ * Submit Claim Use Case Interface
+ */
+public interface SubmitClaimUseCase {
+    SubmitClaimOutput execute(SubmitClaimInput input);
+}
+
+/**
+ * Process Claim Use Case Interface
+ */
+public interface ProcessClaimUseCase {
+    ProcessClaimOutput execute(ProcessClaimInput input);
+}
+
+// ==================== Exceptions ====================
+
+/**
+ * Exception thrown when claim is not found
+ */
+public class ClaimNotFoundException extends RuntimeException {
+    public ClaimNotFoundException(String message) {
+        super(message);
+    }
+}

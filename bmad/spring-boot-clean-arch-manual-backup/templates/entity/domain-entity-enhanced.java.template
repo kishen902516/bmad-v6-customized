@@ -1,0 +1,158 @@
+package {{base_package}}.domain.entity;
+
+{{imports}}
+import java.time.LocalDateTime;
+import java.util.Objects;
+
+/**
+ * {{entity_description}}
+ *
+ * This is a domain entity following Clean Architecture and DDD principles.
+ * It contains business logic and enforces invariants.
+ * It has NO framework dependencies (no JPA annotations).
+ *
+ * Domain entities are:
+ * - Defined by their identity (ID)
+ * - Mutable (but with controlled mutation)
+ * - Rich with business behavior
+ * - Framework-agnostic
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public class {{entity_name}} {
+
+    private {{id_type}} id;
+    {{field_declarations}}
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private String createdBy;
+    private String updatedBy;
+
+    /**
+     * Constructor for creating new {{entity_name}}.
+     * Enforces invariants and validates input.
+     *
+     {{constructor_params_javadoc}}
+     * @throws IllegalArgumentException if validation fails
+     */
+    public {{entity_name}}({{constructor_params}}) {
+        {{validations}}
+        {{field_assignments}}
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Constructor for reconstituting existing {{entity_name}} from persistence.
+     * Used by mappers when loading from database.
+     *
+     * @param id the entity ID
+     {{constructor_params_javadoc}}
+     * @param createdAt creation timestamp
+     * @param updatedAt last update timestamp
+     */
+    public {{entity_name}}({{id_type}} id, {{constructor_params}}, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        this.id = id;
+        {{field_assignments}}
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    /**
+     * Protected constructor for ORM frameworks and testing.
+     * Should not be used in business logic.
+     */
+    protected {{entity_name}}() {
+        // For ORM frameworks and testing only
+    }
+
+    // ========== Business Methods ==========
+
+    {{business_methods}}
+
+    /**
+     * Marks this entity as updated.
+     * Should be called after any state modification.
+     *
+     * @param updatedBy the user making the update
+     */
+    protected void markUpdated(String updatedBy) {
+        this.updatedAt = LocalDateTime.now();
+        this.updatedBy = updatedBy;
+    }
+
+    /**
+     * Validates the entity's current state.
+     * Throws exception if invariants are violated.
+     *
+     * @throws IllegalStateException if entity is in invalid state
+     */
+    public void validate() {
+        {{validation_checks}}
+    }
+
+    // ========== Getters ==========
+
+    public {{id_type}} getId() {
+        return id;
+    }
+
+    {{getters}}
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
+
+    // ========== Package-Private Setters (Controlled Mutation) ==========
+
+    void setId({{id_type}} id) {
+        this.id = id;
+    }
+
+    {{package_private_setters}}
+
+    // ========== Equality and HashCode ==========
+
+    /**
+     * Entities are equal if they have the same ID.
+     * Two entities with null IDs are never equal.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        {{entity_name}} that = ({{entity_name}}) o;
+        return id != null && Objects.equals(id, that.id);
+    }
+
+    /**
+     * HashCode based on class to ensure consistency across persistent and transient states.
+     */
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "{{entity_name}}{" +
+                "id=" + id +
+                {{toString_fields}} +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
+    }
+}

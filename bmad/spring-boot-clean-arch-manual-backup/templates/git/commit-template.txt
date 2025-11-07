@@ -1,0 +1,42 @@
+# <type>: <subject> #<issue-number>
+#
+# Type: feat, fix, docs, style, refactor, test, chore
+# Subject: Short summary (50 chars or less)
+# Issue: GitHub issue number
+#
+# Example: feat: add Policy entity with validation #42
+#
+# --- BODY (optional) ---
+# Explain WHAT changed and WHY (not HOW)
+#
+#
+# --- FOOTER (optional) ---
+# Breaking changes, references to issues
+#
+# Closes #<issue-number>
+#
+# --- TDD Phase (auto-added by BMAD) ---
+# TDD-Phase: RED | GREEN | REFACTOR
+#
+# --- Commit Message Guidelines ---
+# 1. Separate subject from body with a blank line
+# 2. Limit subject line to 50 characters
+# 3. Capitalize the subject line
+# 4. Do not end subject line with a period
+# 5. Use imperative mood in subject line ("add" not "added")
+# 6. Wrap body at 72 characters
+# 7. Use body to explain what and why vs. how
+# 8. Reference issues and PRs liberally
+#
+# --- Commit Types ---
+# feat:     New feature
+# fix:      Bug fix
+# docs:     Documentation only changes
+# style:    Formatting, missing semi colons, etc; no code change
+# refactor: Refactoring production code
+# test:     Adding tests, refactoring test; no production code change
+# chore:    Updating build tasks, package manager configs, etc
+# perf:     Performance improvements
+# ci:       CI/CD configuration changes
+# build:    Build system or external dependencies
+# revert:   Revert to a previous commit

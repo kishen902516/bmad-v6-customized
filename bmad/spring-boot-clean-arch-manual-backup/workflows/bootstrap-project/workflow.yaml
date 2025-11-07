@@ -1,0 +1,27 @@
+# Bootstrap Project Workflow Configuration
+name: bootstrap-project
+description: "Initialize new Spring Boot Clean Architecture project with scenario-based configuration"
+author: "Kishen Sivalingam"
+
+# Configuration source
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+projects_output_path: "{config_source}:projects_output_path"
+default_scenario: "{config_source}:default_scenario"
+include_examples: "{config_source}:include_examples"
+archunit_strictness: "{config_source}:archunit_strictness"
+module_data_path: "{config_source}:module_data_path"
+
+# Workflow paths
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/bootstrap-project"
+template: false  # This is an interactive workflow
+instructions: "{installed_path}/instructions.md"
+
+# Templates and data
+maven_templates: "{module_data_path}/maven-templates"
+archunit_templates: "{module_data_path}/archunit-templates"
+example_domains: "{module_data_path}/examples"
+
+# Output
+default_output_path: "{projects_output_path}/{{project_name}}"
+
+standalone: true

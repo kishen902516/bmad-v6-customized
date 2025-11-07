@@ -1,0 +1,357 @@
+package {{base_package}}.domain.entity;
+
+import {{base_package}}.domain.valueobject.ClaimNumber;
+import {{base_package}}.domain.valueobject.ClaimStatus;
+import {{base_package}}.domain.valueobject.ClaimAmount;
+import {{base_package}}.domain.valueobject.IncidentDetails;
+import {{base_package}}.domain.valueobject.AdjudicationResult;
+import {{base_package}}.domain.exception.InvalidClaimStateException;
+
+import java.time.LocalDateTime;
+import java.util.Objects;
+
+/**
+ * Claim Aggregate Root
+ *
+ * Represents an insurance claim submitted by a policyholder.
+ * Enforces business rules and manages state transitions through the claims lifecycle.
+ *
+ * State Machine:
+ * DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED/REJECTED → PAID
+ *
+ * @author Spring Boot Clean Architecture Generator
+ */
+public class Claim {
+
+    private ClaimNumber claimNumber;
+    private String policyNumber;
+    private ClaimAmount claimedAmount;
+    private IncidentDetails incidentDetails;
+    private ClaimStatus status;
+    private AdjudicationResult adjudicationResult;
+    private LocalDateTime submittedAt;
+    private LocalDateTime processedAt;
+    private LocalDateTime paidAt;
+    private String submittedBy;
+    private String processedBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    /**
+     * Constructor for creating a new claim (DRAFT status)
+     */
+    public Claim(
+            String policyNumber,
+            ClaimAmount claimedAmount,
+            IncidentDetails incidentDetails,
+            String submittedBy) {
+
+        validateConstructorParameters(policyNumber, claimedAmount, incidentDetails, submittedBy);
+
+        this.claimNumber = ClaimNumber.generate();
+        this.policyNumber = policyNumber;
+        this.claimedAmount = claimedAmount;
+        this.incidentDetails = incidentDetails;
+        this.status = ClaimStatus.DRAFT;
+        this.submittedBy = submittedBy;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Constructor for reconstituting a claim from persistence
+     */
+    public Claim(
+            ClaimNumber claimNumber,
+            String policyNumber,
+            ClaimAmount claimedAmount,
+            IncidentDetails incidentDetails,
+            ClaimStatus status,
+            AdjudicationResult adjudicationResult,
+            LocalDateTime submittedAt,
+            LocalDateTime processedAt,
+            LocalDateTime paidAt,
+            String submittedBy,
+            String processedBy,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+
+        this.claimNumber = claimNumber;
+        this.policyNumber = policyNumber;
+        this.claimedAmount = claimedAmount;
+        this.incidentDetails = incidentDetails;
+        this.status = status;
+        this.adjudicationResult = adjudicationResult;
+        this.submittedAt = submittedAt;
+        this.processedAt = processedAt;
+        this.paidAt = paidAt;
+        this.submittedBy = submittedBy;
+        this.processedBy = processedBy;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    // ==================== Business Methods ====================
+
+    /**
+     * Submit the claim for processing
+     * Transition: DRAFT → SUBMITTED
+     *
+     * @throws InvalidClaimStateException if not in DRAFT status
+     */
+    public void submit() {
+        if (status != ClaimStatus.DRAFT) {
+            throw new InvalidClaimStateException(
+                String.format("Cannot submit claim in status %s. Must be DRAFT.", status)
+            );
+        }
+
+        this.status = ClaimStatus.SUBMITTED;
+        this.submittedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Start reviewing the claim
+     * Transition: SUBMITTED → UNDER_REVIEW
+     *
+     * @throws InvalidClaimStateException if not in SUBMITTED status
+     */
+    public void startReview() {
+        if (status != ClaimStatus.SUBMITTED) {
+            throw new InvalidClaimStateException(
+                String.format("Cannot start review for claim in status %s. Must be SUBMITTED.", status)
+            );
+        }
+
+        this.status = ClaimStatus.UNDER_REVIEW;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Approve the claim with adjudication result
+     * Transition: UNDER_REVIEW → APPROVED
+     *
+     * @param approvedAmount The amount approved for payment
+     * @param reason The reason for approval
+     * @param adjusterNotes Additional notes from adjuster
+     * @param processedBy The adjuster who approved the claim
+     * @throws InvalidClaimStateException if not in UNDER_REVIEW status
+     * @throws IllegalArgumentException if approved amount exceeds claimed amount
+     */
+    public void approve(
+            ClaimAmount approvedAmount,
+            String reason,
+            String adjusterNotes,
+            String processedBy) {
+
+        if (status != ClaimStatus.UNDER_REVIEW) {
+            throw new InvalidClaimStateException(
+                String.format("Cannot approve claim in status %s. Must be UNDER_REVIEW.", status)
+            );
+        }
+
+        if (approvedAmount.amount().compareTo(claimedAmount.amount()) > 0) {
+            throw new IllegalArgumentException(
+                String.format("Approved amount %s cannot exceed claimed amount %s",
+                    approvedAmount, claimedAmount)
+            );
+        }
+
+        Objects.requireNonNull(reason, "Approval reason is required");
+        Objects.requireNonNull(processedBy, "ProcessedBy is required");
+
+        this.adjudicationResult = new AdjudicationResult(
+            true,
+            approvedAmount,
+            reason,
+            adjusterNotes
+        );
+        this.status = ClaimStatus.APPROVED;
+        this.processedBy = processedBy;
+        this.processedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Reject the claim with reason
+     * Transition: UNDER_REVIEW → REJECTED
+     *
+     * @param reason The reason for rejection
+     * @param adjusterNotes Additional notes from adjuster
+     * @param processedBy The adjuster who rejected the claim
+     * @throws InvalidClaimStateException if not in UNDER_REVIEW status
+     */
+    public void reject(String reason, String adjusterNotes, String processedBy) {
+        if (status != ClaimStatus.UNDER_REVIEW) {
+            throw new InvalidClaimStateException(
+                String.format("Cannot reject claim in status %s. Must be UNDER_REVIEW.", status)
+            );
+        }
+
+        Objects.requireNonNull(reason, "Rejection reason is required");
+        Objects.requireNonNull(processedBy, "ProcessedBy is required");
+
+        this.adjudicationResult = new AdjudicationResult(
+            false,
+            null,
+            reason,
+            adjusterNotes
+        );
+        this.status = ClaimStatus.REJECTED;
+        this.processedBy = processedBy;
+        this.processedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Mark the claim as paid
+     * Transition: APPROVED → PAID
+     *
+     * @param paymentReference Payment reference/transaction ID
+     * @throws InvalidClaimStateException if not in APPROVED status
+     */
+    public void markAsPaid(String paymentReference) {
+        if (status != ClaimStatus.APPROVED) {
+            throw new InvalidClaimStateException(
+                String.format("Cannot pay claim in status %s. Must be APPROVED.", status)
+            );
+        }
+
+        Objects.requireNonNull(paymentReference, "Payment reference is required");
+
+        this.status = ClaimStatus.PAID;
+        this.paidAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Check if claim can be processed (approved or rejected)
+     */
+    public boolean canBeProcessed() {
+        return status == ClaimStatus.UNDER_REVIEW;
+    }
+
+    /**
+     * Check if claim can be paid
+     */
+    public boolean canBePaid() {
+        return status == ClaimStatus.APPROVED;
+    }
+
+    /**
+     * Get the approved amount (if approved)
+     */
+    public ClaimAmount getApprovedAmount() {
+        if (adjudicationResult != null && adjudicationResult.approved()) {
+            return adjudicationResult.approvedAmount();
+        }
+        return null;
+    }
+
+    // ==================== Validation ====================
+
+    private void validateConstructorParameters(
+            String policyNumber,
+            ClaimAmount claimedAmount,
+            IncidentDetails incidentDetails,
+            String submittedBy) {
+
+        Objects.requireNonNull(policyNumber, "Policy number is required");
+        Objects.requireNonNull(claimedAmount, "Claimed amount is required");
+        Objects.requireNonNull(incidentDetails, "Incident details are required");
+        Objects.requireNonNull(submittedBy, "SubmittedBy is required");
+
+        if (policyNumber.isBlank()) {
+            throw new IllegalArgumentException("Policy number cannot be blank");
+        }
+
+        if (submittedBy.isBlank()) {
+            throw new IllegalArgumentException("SubmittedBy cannot be blank");
+        }
+
+        // Validate incident date is not in the future
+        if (incidentDetails.incidentDate().isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Incident date cannot be in the future");
+        }
+    }
+
+    // ==================== Getters ====================
+
+    public ClaimNumber getClaimNumber() {
+        return claimNumber;
+    }
+
+    public String getPolicyNumber() {
+        return policyNumber;
+    }
+
+    public ClaimAmount getClaimedAmount() {
+        return claimedAmount;
+    }
+
+    public IncidentDetails getIncidentDetails() {
+        return incidentDetails;
+    }
+
+    public ClaimStatus getStatus() {
+        return status;
+    }
+
+    public AdjudicationResult getAdjudicationResult() {
+        return adjudicationResult;
+    }
+
+    public LocalDateTime getSubmittedAt() {
+        return submittedAt;
+    }
+
+    public LocalDateTime getProcessedAt() {
+        return processedAt;
+    }
+
+    public LocalDateTime getPaidAt() {
+        return paidAt;
+    }
+
+    public String getSubmittedBy() {
+        return submittedBy;
+    }
+
+    public String getProcessedBy() {
+        return processedBy;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    // ==================== equals, hashCode, toString ====================
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Claim claim = (Claim) o;
+        return Objects.equals(claimNumber, claim.claimNumber);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(claimNumber);
+    }
+
+    @Override
+    public String toString() {
+        return "Claim{" +
+                "claimNumber=" + claimNumber +
+                ", policyNumber='" + policyNumber + '\'' +
+                ", status=" + status +
+                ", claimedAmount=" + claimedAmount +
+                '}';
+    }
+}

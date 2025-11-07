@@ -1,0 +1,58 @@
+# Add Repository Workflow Configuration
+name: add-repository
+description: "Add data access repository with interface in domain and JPA implementation"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+
+# Critical variables from config
+output_folder: "{config_source}:output_folder"
+user_name: "{config_source}:user_name"
+communication_language: "{config_source}:communication_language"
+date: system-generated
+
+# Module paths
+module_data_path: "{config_source}:module_data_path"
+module_templates_path: "{config_source}:module_templates_path"
+module_agents_path: "{config_source}:module_agents_path"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/add-repository"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+# Repository templates
+repository_interface_template: "{module_templates_path}/repository/repository-interface.java.template"
+repository_impl_template: "{module_templates_path}/repository/repository-impl.java.template"
+jpa_repository_template: "{module_templates_path}/repository/jpa-repository.java.template"
+
+# Test templates
+repository_test_template: "{module_templates_path}/tests/repository-integration-test.java.template"
+
+# Data and guides
+tdd_guide: "{module_data_path}/TDD-WORKFLOW-GUIDE.md"
+
+# Agents
+test_engineer_agent: "{module_agents_path}/test-engineer.agent.yaml"
+arch_validator_agent: "{module_agents_path}/arch-validator.agent.yaml"
+
+base_package: "{{base_package}}"
+
+standalone: false
+
+# Web bundle configuration
+web_bundle:
+  name: "add-repository"
+  description: "Add data access repository with interface in domain and JPA implementation"
+  author: "Kishen Sivalingam"
+
+  web_bundle_files:
+    - "bmad/spring-boot-clean-arch/workflows/add-repository/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/workflows/add-repository/instructions.md"
+    - "bmad/spring-boot-clean-arch/config.yaml"
+    - "bmad/spring-boot-clean-arch/templates/repository/repository-interface.java.template"
+    - "bmad/spring-boot-clean-arch/templates/repository/repository-impl.java.template"
+    - "bmad/spring-boot-clean-arch/templates/repository/jpa-repository.java.template"
+    - "bmad/spring-boot-clean-arch/templates/tests/repository-integration-test.java.template"
+    - "bmad/spring-boot-clean-arch/data/TDD-WORKFLOW-GUIDE.md"
+    - "bmad/spring-boot-clean-arch/agents/test-engineer.agent.yaml"
+    - "bmad/spring-boot-clean-arch/agents/arch-validator.agent.yaml"

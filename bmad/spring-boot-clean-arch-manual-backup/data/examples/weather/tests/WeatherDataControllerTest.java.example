@@ -1,0 +1,332 @@
+package {{base_package}}.presentation.rest;
+
+import {{base_package}}.application.usecase.GetWeatherDataUseCase;
+import {{base_package}}.application.usecase.RecordWeatherDataUseCase;
+import {{base_package}}.presentation.rest.exception.WeatherDataNotFoundException;
+import {{base_package}}.presentation.rest.model.WeatherDataRequest;
+import {{base_package}}.presentation.rest.model.WeatherDataResponse;
+import {{base_package}}.domain.valueobject.Location;
+import {{base_package}}.domain.valueobject.Temperature;
+import {{base_package}}.domain.valueobject.TemperatureUnit;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.*;
+
+/**
+ * Controller tests for WeatherDataController using @WebMvcTest.
+ *
+ * Tests REST API endpoints with mocked use cases, verifying:
+ * - Request mapping and validation
+ * - Response serialization
+ * - HTTP status codes
+ * - Error handling
+ */
+@WebMvcTest(WeatherDataController.class)
+@DisplayName("WeatherData Controller Tests")
+class WeatherDataControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private RecordWeatherDataUseCase recordWeatherDataUseCase;
+
+    @MockBean
+    private GetWeatherDataUseCase getWeatherDataUseCase;
+
+    @Nested
+    @DisplayName("POST /api/weather")
+    class RecordWeatherDataTests {
+
+        @Test
+        @DisplayName("Should record weather data and return 201 Created")
+        void shouldRecordWeatherData() throws Exception {
+            // Given
+            WeatherDataRequest request = new WeatherDataRequest(
+                    "New York",
+                    40.7128,
+                    -74.0060,
+                    25.0,
+                    "CELSIUS",
+                    65.0,
+                    15.0
+            );
+
+            UUID id = UUID.randomUUID();
+            WeatherDataResponse expectedResponse = new WeatherDataResponse(
+                    id,
+                    "New York",
+                    40.7128,
+                    -74.0060,
+                    25.0,
+                    "CELSIUS",
+                    65.0,
+                    15.0,
+                    LocalDateTime.now()
+            );
+
+            when(recordWeatherDataUseCase.execute(any()))
+                    .thenReturn(expectedResponse);
+
+            // When / Then
+            mockMvc.perform(post("/api/weather")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").exists())
+                    .andExpect(jsonPath("$.city").value("New York"))
+                    .andExpect(jsonPath("$.latitude").value(40.7128))
+                    .andExpect(jsonPath("$.longitude").value(-74.0060))
+                    .andExpect(jsonPath("$.temperature").value(25.0))
+                    .andExpect(jsonPath("$.temperatureUnit").value("CELSIUS"))
+                    .andExpect(jsonPath("$.humidity").value(65.0))
+                    .andExpect(jsonPath("$.windSpeed").value(15.0));
+
+            verify(recordWeatherDataUseCase, times(1)).execute(any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when city is missing")
+        void shouldRejectRequestWithMissingCity() throws Exception {
+            // Given
+            WeatherDataRequest invalidRequest = new WeatherDataRequest(
+                    null,  // Missing city
+                    40.7128,
+                    -74.0060,
+                    25.0,
+                    "CELSIUS",
+                    65.0,
+                    15.0
+            );
+
+            // When / Then
+            mockMvc.perform(post("/api/weather")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(invalidRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(recordWeatherDataUseCase, never()).execute(any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when humidity is out of range")
+        void shouldRejectInvalidHumidity() throws Exception {
+            // Given
+            WeatherDataRequest invalidRequest = new WeatherDataRequest(
+                    "New York",
+                    40.7128,
+                    -74.0060,
+                    25.0,
+                    "CELSIUS",
+                    150.0,  // Invalid humidity > 100
+                    15.0
+            );
+
+            // When / Then
+            mockMvc.perform(post("/api/weather")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(invalidRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(recordWeatherDataUseCase, never()).execute(any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when wind speed is negative")
+        void shouldRejectNegativeWindSpeed() throws Exception {
+            // Given
+            WeatherDataRequest invalidRequest = new WeatherDataRequest(
+                    "New York",
+                    40.7128,
+                    -74.0060,
+                    25.0,
+                    "CELSIUS",
+                    65.0,
+                    -5.0  // Invalid negative wind speed
+            );
+
+            // When / Then
+            mockMvc.perform(post("/api/weather")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(invalidRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify(recordWeatherDataUseCase, never()).execute(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/weather/{id}")
+    class GetWeatherDataByIdTests {
+
+        @Test
+        @DisplayName("Should retrieve weather data by ID and return 200 OK")
+        void shouldGetWeatherDataById() throws Exception {
+            // Given
+            UUID id = UUID.randomUUID();
+            WeatherDataResponse expectedResponse = new WeatherDataResponse(
+                    id,
+                    "New York",
+                    40.7128,
+                    -74.0060,
+                    25.0,
+                    "CELSIUS",
+                    65.0,
+                    15.0,
+                    LocalDateTime.now()
+            );
+
+            when(getWeatherDataUseCase.execute(eq(id)))
+                    .thenReturn(expectedResponse);
+
+            // When / Then
+            mockMvc.perform(get("/api/weather/{id}", id))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(id.toString()))
+                    .andExpect(jsonPath("$.city").value("New York"))
+                    .andExpect(jsonPath("$.temperature").value(25.0));
+
+            verify(getWeatherDataUseCase, times(1)).execute(eq(id));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when weather data does not exist")
+        void shouldReturn404WhenNotFound() throws Exception {
+            // Given
+            UUID id = UUID.randomUUID();
+
+            when(getWeatherDataUseCase.execute(eq(id)))
+                    .thenThrow(new WeatherDataNotFoundException("WeatherData not found with ID: " + id));
+
+            // When / Then
+            mockMvc.perform(get("/api/weather/{id}", id))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("not found")));
+
+            verify(getWeatherDataUseCase, times(1)).execute(eq(id));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/weather")
+    class GetAllWeatherDataTests {
+
+        @Test
+        @DisplayName("Should retrieve all weather data and return 200 OK")
+        void shouldGetAllWeatherData() throws Exception {
+            // Given
+            List<WeatherDataResponse> responses = List.of(
+                    new WeatherDataResponse(
+                            UUID.randomUUID(),
+                            "New York",
+                            40.7128,
+                            -74.0060,
+                            25.0,
+                            "CELSIUS",
+                            65.0,
+                            15.0,
+                            LocalDateTime.now()
+                    ),
+                    new WeatherDataResponse(
+                            UUID.randomUUID(),
+                            "London",
+                            51.5074,
+                            -0.1278,
+                            18.0,
+                            "CELSIUS",
+                            70.0,
+                            20.0,
+                            LocalDateTime.now()
+                    )
+            );
+
+            when(getWeatherDataUseCase.getAllWeatherData())
+                    .thenReturn(responses);
+
+            // When / Then
+            mockMvc.perform(get("/api/weather"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[0].city").value("New York"))
+                    .andExpect(jsonPath("$[1].city").value("London"));
+
+            verify(getWeatherDataUseCase, times(1)).getAllWeatherData();
+        }
+
+        @Test
+        @DisplayName("Should return empty list when no weather data exists")
+        void shouldReturnEmptyListWhenNoneExist() throws Exception {
+            // Given
+            when(getWeatherDataUseCase.getAllWeatherData())
+                    .thenReturn(List.of());
+
+            // When / Then
+            mockMvc.perform(get("/api/weather"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(0)));
+
+            verify(getWeatherDataUseCase, times(1)).getAllWeatherData();
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/weather/city/{city}")
+    class GetWeatherDataByCityTests {
+
+        @Test
+        @DisplayName("Should retrieve weather data by city and return 200 OK")
+        void shouldGetWeatherDataByCity() throws Exception {
+            // Given
+            String city = "New York";
+            List<WeatherDataResponse> responses = List.of(
+                    new WeatherDataResponse(
+                            UUID.randomUUID(),
+                            city,
+                            40.7128,
+                            -74.0060,
+                            25.0,
+                            "CELSIUS",
+                            65.0,
+                            15.0,
+                            LocalDateTime.now()
+                    )
+            );
+
+            when(getWeatherDataUseCase.getWeatherDataByCity(eq(city)))
+                    .thenReturn(responses);
+
+            // When / Then
+            mockMvc.perform(get("/api/weather/city/{city}", city))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(1)))
+                    .andExpect(jsonPath("$[0].city").value(city));
+
+            verify(getWeatherDataUseCase, times(1)).getWeatherDataByCity(eq(city));
+        }
+    }
+}

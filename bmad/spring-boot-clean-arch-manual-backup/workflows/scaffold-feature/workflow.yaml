@@ -1,0 +1,15 @@
+# Scaffold Feature Workflow Configuration
+name: scaffold-feature
+description: "Add complete feature across all layers with conversational guidance"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/scaffold-feature"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+target_project_path: "{{project_path}}"
+base_package: "{{base_package}}"
+
+standalone: false

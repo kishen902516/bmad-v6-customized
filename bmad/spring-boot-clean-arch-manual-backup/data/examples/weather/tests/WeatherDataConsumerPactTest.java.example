@@ -1,0 +1,271 @@
+package {{base_package}}.presentation.rest.pact;
+
+import au.com.dius.pact.consumer.dsl.DslPart;
+import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
+import au.com.dius.pact.consumer.dsl.PactDslWithProvider;
+import au.com.dius.pact.consumer.junit5.PactConsumerTestExt;
+import au.com.dius.pact.consumer.junit5.PactTestFor;
+import au.com.dius.pact.core.model.PactSpecVersion;
+import au.com.dius.pact.core.model.V4Pact;
+import au.com.dius.pact.core.model.annotations.Pact;
+import au.com.dius.pact.core.model.mockserver.MockServer;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Pact Consumer tests for WeatherData API.
+ *
+ * These tests define the contract from the consumer's perspective.
+ * They generate a Pact file that can be verified by the provider.
+ *
+ * Consumer: WeatherDataConsumer
+ * Provider: WeatherDataService
+ */
+@ExtendWith(PactConsumerTestExt.class)
+@DisplayName("WeatherData API Consumer Contract Tests")
+@PactTestFor(providerName = "WeatherDataService", pactVersion = PactSpecVersion.V4)
+class WeatherDataConsumerPactTest {
+
+    /**
+     * Pact definition for creating weather data.
+     *
+     * Defines expected request and response for POST /api/weather
+     */
+    @Pact(consumer = "WeatherDataConsumer")
+    public V4Pact createWeatherDataPact(PactDslWithProvider builder) {
+        DslPart requestBody = new PactDslJsonBody()
+                .stringType("city", "New York")
+                .numberType("latitude", 40.7128)
+                .numberType("longitude", -74.0060)
+                .numberType("temperature", 25.0)
+                .stringType("temperatureUnit", "CELSIUS")
+                .numberType("humidity", 65.0)
+                .numberType("windSpeed", 15.0);
+
+        DslPart responseBody = new PactDslJsonBody()
+                .uuid("id")
+                .stringType("city", "New York")
+                .numberType("latitude", 40.7128)
+                .numberType("longitude", -74.0060)
+                .numberType("temperature", 25.0)
+                .stringType("temperatureUnit", "CELSIUS")
+                .numberType("humidity", 65.0)
+                .numberType("windSpeed", 15.0)
+                .datetime("recordedAt", "yyyy-MM-dd'T'HH:mm:ss");
+
+        return builder
+                .given("WeatherData can be created")
+                .uponReceiving("a request to create weather data")
+                    .method("POST")
+                    .path("/api/weather")
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(requestBody)
+                .willRespondWith()
+                    .status(HttpStatus.CREATED.value())
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(responseBody)
+                .toPact(V4Pact.class);
+    }
+
+    /**
+     * Test: Consumer can create weather data.
+     */
+    @Test
+    @PactTestFor(pactMethod = "createWeatherDataPact")
+    @DisplayName("Should create weather data and receive 201 Created")
+    void testCreateWeatherData(MockServer mockServer) throws IOException, InterruptedException {
+        // Given
+        String requestJson = """
+                {
+                    "city": "New York",
+                    "latitude": 40.7128,
+                    "longitude": -74.0060,
+                    "temperature": 25.0,
+                    "temperatureUnit": "CELSIUS",
+                    "humidity": 65.0,
+                    "windSpeed": 15.0
+                }
+                """;
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mockServer.getUrl() + "/api/weather"))
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+                .build();
+
+        // When
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Then
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.CREATED.value());
+        assertThat(response.headers().firstValue("Content-Type"))
+                .isPresent()
+                .get()
+                .asString()
+                .contains(MediaType.APPLICATION_JSON_VALUE);
+        assertThat(response.body()).isNotEmpty();
+        assertThat(response.body()).contains("New York");
+        assertThat(response.body()).contains("\"temperature\":25.0");
+    }
+
+    /**
+     * Pact definition for retrieving weather data by ID.
+     */
+    @Pact(consumer = "WeatherDataConsumer")
+    public V4Pact getWeatherDataByIdPact(PactDslWithProvider builder) {
+        DslPart responseBody = new PactDslJsonBody()
+                .uuid("id", "550e8400-e29b-41d4-a716-446655440000")
+                .stringType("city", "New York")
+                .numberType("latitude", 40.7128)
+                .numberType("longitude", -74.0060)
+                .numberType("temperature", 25.0)
+                .stringType("temperatureUnit", "CELSIUS")
+                .numberType("humidity", 65.0)
+                .numberType("windSpeed", 15.0)
+                .datetime("recordedAt", "yyyy-MM-dd'T'HH:mm:ss");
+
+        return builder
+                .given("WeatherData with ID 550e8400-e29b-41d4-a716-446655440000 exists")
+                .uponReceiving("a request to get weather data by ID")
+                    .method("GET")
+                    .path("/api/weather/550e8400-e29b-41d4-a716-446655440000")
+                .willRespondWith()
+                    .status(HttpStatus.OK.value())
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(responseBody)
+                .toPact(V4Pact.class);
+    }
+
+    /**
+     * Test: Consumer can retrieve weather data by ID.
+     */
+    @Test
+    @PactTestFor(pactMethod = "getWeatherDataByIdPact")
+    @DisplayName("Should retrieve weather data by ID and receive 200 OK")
+    void testGetWeatherDataById(MockServer mockServer) throws IOException, InterruptedException {
+        // Given
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mockServer.getUrl() + "/api/weather/550e8400-e29b-41d4-a716-446655440000"))
+                .GET()
+                .build();
+
+        // When
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Then
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.value());
+        assertThat(response.body()).isNotEmpty();
+        assertThat(response.body()).contains("550e8400-e29b-41d4-a716-446655440000");
+        assertThat(response.body()).contains("New York");
+    }
+
+    /**
+     * Pact definition for weather data not found scenario.
+     */
+    @Pact(consumer = "WeatherDataConsumer")
+    public V4Pact getWeatherDataNotFoundPact(PactDslWithProvider builder) {
+        DslPart errorResponse = new PactDslJsonBody()
+                .integerType("status", 404)
+                .stringType("error", "Resource not found")
+                .stringMatcher("message", ".*not found.*", "WeatherData not found");
+
+        return builder
+                .given("WeatherData with ID 00000000-0000-0000-0000-000000000000 does not exist")
+                .uponReceiving("a request to get non-existent weather data")
+                    .method("GET")
+                    .path("/api/weather/00000000-0000-0000-0000-000000000000")
+                .willRespondWith()
+                    .status(HttpStatus.NOT_FOUND.value())
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(errorResponse)
+                .toPact(V4Pact.class);
+    }
+
+    /**
+     * Test: Consumer handles 404 when weather data not found.
+     */
+    @Test
+    @PactTestFor(pactMethod = "getWeatherDataNotFoundPact")
+    @DisplayName("Should receive 404 when weather data not found")
+    void testGetWeatherDataNotFound(MockServer mockServer) throws IOException, InterruptedException {
+        // Given
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mockServer.getUrl() + "/api/weather/00000000-0000-0000-0000-000000000000"))
+                .GET()
+                .build();
+
+        // When
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Then
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.NOT_FOUND.value());
+        assertThat(response.body()).contains("not found");
+    }
+
+    /**
+     * Pact definition for retrieving all weather data.
+     */
+    @Pact(consumer = "WeatherDataConsumer")
+    public V4Pact getAllWeatherDataPact(PactDslWithProvider builder) {
+        DslPart responseBody = new PactDslJsonBody()
+                .minArrayLike("weather", 1, 2)
+                    .uuid("id")
+                    .stringType("city")
+                    .numberType("latitude")
+                    .numberType("longitude")
+                    .numberType("temperature")
+                    .stringType("temperatureUnit")
+                    .numberType("humidity")
+                    .numberType("windSpeed")
+                    .datetime("recordedAt", "yyyy-MM-dd'T'HH:mm:ss")
+                .closeArray();
+
+        return builder
+                .given("Multiple weather data entries exist")
+                .uponReceiving("a request to get all weather data")
+                    .method("GET")
+                    .path("/api/weather")
+                .willRespondWith()
+                    .status(HttpStatus.OK.value())
+                    .headers("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .body(responseBody)
+                .toPact(V4Pact.class);
+    }
+
+    /**
+     * Test: Consumer can retrieve all weather data.
+     */
+    @Test
+    @PactTestFor(pactMethod = "getAllWeatherDataPact")
+    @DisplayName("Should retrieve all weather data and receive 200 OK")
+    void testGetAllWeatherData(MockServer mockServer) throws IOException, InterruptedException {
+        // Given
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(mockServer.getUrl() + "/api/weather"))
+                .GET()
+                .build();
+
+        // When
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Then
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.value());
+        assertThat(response.body()).isNotEmpty();
+        assertThat(response.body()).contains("weather");
+    }
+}

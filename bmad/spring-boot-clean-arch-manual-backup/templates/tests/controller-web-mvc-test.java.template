@@ -1,0 +1,238 @@
+package {{base_package}}.presentation.rest;
+
+import {{base_package}}.application.usecase.{{create_use_case_name}};
+import {{base_package}}.application.usecase.{{get_use_case_name}};
+import {{base_package}}.presentation.rest.exception.{{entity_name}}NotFoundException;
+import {{base_package}}.presentation.rest.model.{{entity_name}}Request;
+import {{base_package}}.presentation.rest.model.{{entity_name}}Response;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.*;
+
+/**
+ * Controller tests for {{entity_name}}Controller using @WebMvcTest.
+ *
+ * Tests REST API endpoints with mocked use cases, verifying:
+ * - Request mapping and validation
+ * - Response serialization
+ * - HTTP status codes
+ * - Error handling
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@WebMvcTest({{entity_name}}Controller.class)
+@DisplayName("{{entity_name}} Controller Tests")
+class {{entity_name}}ControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private {{create_use_case_name}} {{create_use_case_name_camel}};
+
+    @MockBean
+    private {{get_use_case_name}} {{get_use_case_name_camel}};
+
+    {{additional_use_case_mocks}}
+
+    @Nested
+    @DisplayName("POST {{endpoint_path}}")
+    class Create{{entity_name}}Tests {
+
+        @Test
+        @DisplayName("Should create {{entity_name}} and return 201 Created")
+        void shouldCreate{{entity_name}}() throws Exception {
+            // Given
+            {{entity_name}}Request request = {{create_test_request}};
+            {{entity_name}}Response expectedResponse = {{create_test_response}};
+
+            when({{create_use_case_name_camel}}.execute(any()))
+                    .thenReturn(expectedResponse);
+
+            // When / Then
+            mockMvc.perform(post("{{endpoint_path}}")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    {{response_field_assertions}};
+
+            verify({{create_use_case_name_camel}}, times(1)).execute(any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when request is invalid")
+        void shouldRejectInvalidRequest() throws Exception {
+            // Given
+            {{entity_name}}Request invalidRequest = {{create_invalid_request}};
+
+            // When / Then
+            mockMvc.perform(post("{{endpoint_path}}")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(invalidRequest)))
+                    .andExpect(status().isBadRequest());
+
+            verify({{create_use_case_name_camel}}, never()).execute(any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when request body is missing")
+        void shouldRejectMissingRequestBody() throws Exception {
+            mockMvc.perform(post("{{endpoint_path}}")
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest());
+
+            verify({{create_use_case_name_camel}}, never()).execute(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET {{endpoint_path}}/{id}")
+    class Get{{entity_name}}ByIdTests {
+
+        @Test
+        @DisplayName("Should retrieve {{entity_name}} by ID and return 200 OK")
+        void shouldGet{{entity_name}}ById() throws Exception {
+            // Given
+            {{id_type}} id = {{test_id}};
+            {{entity_name}}Response expectedResponse = {{create_test_response_with_id}};
+
+            when({{get_use_case_name_camel}}.execute(eq(id)))
+                    .thenReturn(expectedResponse);
+
+            // When / Then
+            mockMvc.perform(get("{{endpoint_path}}/{id}", id))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    {{response_field_assertions}};
+
+            verify({{get_use_case_name_camel}}, times(1)).execute(eq(id));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when {{entity_name}} does not exist")
+        void shouldReturn404WhenNotFound() throws Exception {
+            // Given
+            {{id_type}} id = {{non_existent_id}};
+
+            when({{get_use_case_name_camel}}.execute(eq(id)))
+                    .thenThrow(new {{entity_name}}NotFoundException("{{entity_name}} not found with ID: " + id));
+
+            // When / Then
+            mockMvc.perform(get("{{endpoint_path}}/{id}", id))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message", containsString("not found")));
+
+            verify({{get_use_case_name_camel}}, times(1)).execute(eq(id));
+        }
+
+        @Test
+        @DisplayName("Should return 400 Bad Request when ID format is invalid")
+        void shouldRejectInvalidIdFormat() throws Exception {
+            mockMvc.perform(get("{{endpoint_path}}/{id}", "invalid-id"))
+                    .andExpect(status().isBadRequest());
+
+            verify({{get_use_case_name_camel}}, never()).execute(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET {{endpoint_path}}")
+    class GetAll{{entity_name}}Tests {
+
+        @Test
+        @DisplayName("Should retrieve all {{entity_name}} entities and return 200 OK")
+        void shouldGetAll{{entity_name}}Entities() throws Exception {
+            // Given
+            List<{{entity_name}}Response> responses = List.of(
+                    {{create_test_response}},
+                    {{create_another_test_response}}
+            );
+
+            when({{get_all_use_case_name_camel}}.execute())
+                    .thenReturn(responses);
+
+            // When / Then
+            mockMvc.perform(get("{{endpoint_path}}"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    {{array_response_assertions}};
+
+            verify({{get_all_use_case_name_camel}}, times(1)).execute();
+        }
+
+        @Test
+        @DisplayName("Should return empty list when no {{entity_name}} entities exist")
+        void shouldReturnEmptyListWhenNoneExist() throws Exception {
+            // Given
+            when({{get_all_use_case_name_camel}}.execute())
+                    .thenReturn(List.of());
+
+            // When / Then
+            mockMvc.perform(get("{{endpoint_path}}"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(0)));
+
+            verify({{get_all_use_case_name_camel}}, times(1)).execute();
+        }
+    }
+
+    @Nested
+    @DisplayName("DELETE {{endpoint_path}}/{id}")
+    class Delete{{entity_name}}Tests {
+
+        @Test
+        @DisplayName("Should delete {{entity_name}} and return 204 No Content")
+        void shouldDelete{{entity_name}}() throws Exception {
+            // Given
+            {{id_type}} id = {{test_id}};
+
+            doNothing().when({{delete_use_case_name_camel}}).execute(eq(id));
+
+            // When / Then
+            mockMvc.perform(delete("{{endpoint_path}}/{id}", id))
+                    .andExpect(status().isNoContent());
+
+            verify({{delete_use_case_name_camel}}, times(1)).execute(eq(id));
+        }
+
+        @Test
+        @DisplayName("Should return 404 Not Found when deleting non-existent {{entity_name}}")
+        void shouldReturn404WhenDeletingNonExistent() throws Exception {
+            // Given
+            {{id_type}} id = {{non_existent_id}};
+
+            doThrow(new {{entity_name}}NotFoundException("{{entity_name}} not found with ID: " + id))
+                    .when({{delete_use_case_name_camel}}).execute(eq(id));
+
+            // When / Then
+            mockMvc.perform(delete("{{endpoint_path}}/{id}", id))
+                    .andExpect(status().isNotFound());
+
+            verify({{delete_use_case_name_camel}}, times(1)).execute(eq(id));
+        }
+    }
+
+    {{custom_endpoint_tests}}
+}

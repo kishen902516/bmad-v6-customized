@@ -1,0 +1,53 @@
+package {{base_package}}.application.service;
+
+import {{base_package}}.application.dto.{{use_case_name}}Input;
+import {{base_package}}.application.dto.{{use_case_name}}Output;
+import {{base_package}}.application.usecase.{{use_case_name}}UseCase;
+{{repository_imports}}
+{{domain_imports}}
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Service implementation of {{use_case_name}} use case.
+ *
+ * This service orchestrates domain logic to fulfill the use case.
+ * It coordinates between domain entities and repositories.
+ * Resides in the application layer as part of Clean Architecture.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@Service
+@Transactional{{transactional_readonly}}
+public class {{use_case_name}}Service implements {{use_case_name}}UseCase {
+
+    private static final Logger log = LoggerFactory.getLogger({{use_case_name}}Service.class);
+
+    {{repository_dependencies}}
+
+    /**
+     * Constructor with dependency injection.
+     */
+    public {{use_case_name}}Service({{constructor_params}}) {
+        {{field_assignments}}
+    }
+
+    @Override
+    public {{output_type}} execute({{input_type}} input) {
+        log.debug("Executing {{use_case_name}} with input: {}", input);
+
+        // Step 1: Validate input
+        {{input_validation}}
+
+        // Step 2: Execute business logic
+        {{business_logic_steps}}
+
+        // Step 3: Return output
+        {{return_output}}
+    }
+
+    {{private_helper_methods}}
+}

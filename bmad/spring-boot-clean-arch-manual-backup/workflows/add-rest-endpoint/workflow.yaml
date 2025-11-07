@@ -1,0 +1,55 @@
+# Add REST Endpoint Workflow Configuration
+name: add-rest-endpoint
+description: "Add REST API endpoint with OpenAPI documentation and contract tests"
+author: "Kishen Sivalingam"
+
+config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+
+# Critical variables from config
+output_folder: "{config_source}:output_folder"
+user_name: "{config_source}:user_name"
+communication_language: "{config_source}:communication_language"
+date: system-generated
+
+# Module paths
+module_data_path: "{config_source}:module_data_path"
+module_templates_path: "{config_source}:module_templates_path"
+module_agents_path: "{config_source}:module_agents_path"
+
+installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/add-rest-endpoint"
+template: false
+instructions: "{installed_path}/instructions.md"
+
+# Controller templates
+controller_template: "{module_templates_path}/controller"
+exception_handler_template: "{module_templates_path}/controller"
+
+# Test templates
+controller_test_template: "{module_templates_path}/tests"
+
+# Data and guides
+pact_testing_guide: "{module_data_path}/PACT-TESTING-GUIDE.md"
+
+# Agents
+test_engineer_agent: "{module_agents_path}/test-engineer.agent.yaml"
+arch_validator_agent: "{module_agents_path}/arch-validator.agent.yaml"
+
+base_package: "{{base_package}}"
+
+standalone: false
+
+# Web bundle configuration
+web_bundle:
+  name: "add-rest-endpoint"
+  description: "Add REST API endpoint with OpenAPI documentation and contract tests"
+  author: "Kishen Sivalingam"
+
+  web_bundle_files:
+    - "bmad/spring-boot-clean-arch/workflows/add-rest-endpoint/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/workflows/add-rest-endpoint/instructions.md"
+    - "bmad/spring-boot-clean-arch/config.yaml"
+    - "bmad/spring-boot-clean-arch/templates/controller"
+    - "bmad/spring-boot-clean-arch/templates/tests"
+    - "bmad/spring-boot-clean-arch/data/PACT-TESTING-GUIDE.md"
+    - "bmad/spring-boot-clean-arch/agents/test-engineer.agent.yaml"
+    - "bmad/spring-boot-clean-arch/agents/arch-validator.agent.yaml"

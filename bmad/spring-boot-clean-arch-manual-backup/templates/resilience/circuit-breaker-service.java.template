@@ -1,0 +1,153 @@
+package {{base_package}}.infrastructure.adapter.external;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+/**
+ * External service client with resilience patterns.
+ *
+ * Demonstrates Circuit Breaker, Retry, and Bulkhead patterns
+ * for fault-tolerant external service communication.
+ *
+ * Resilience Patterns Applied:
+ * - Circuit Breaker: Prevents cascading failures
+ * - Retry: Automatically retries failed calls
+ * - Bulkhead: Limits concurrent calls to prevent resource exhaustion
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@Service
+public class {{service_name}}ExternalService {
+
+    private static final Logger log = LoggerFactory.getLogger({{service_name}}ExternalService.class);
+    private static final String CIRCUIT_BREAKER_NAME = "externalService";
+
+    private final RestTemplate restTemplate;
+    private final String externalServiceUrl;
+
+    public {{service_name}}ExternalService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+        this.externalServiceUrl = "{{external_service_url}}";
+    }
+
+    /**
+     * Call external service with Circuit Breaker pattern.
+     *
+     * Circuit Breaker States:
+     * - CLOSED: Normal operation, calls go through
+     * - OPEN: Too many failures, calls fail fast without trying
+     * - HALF_OPEN: Testing if service recovered
+     *
+     * Fallback is called when:
+     * - Circuit is OPEN
+     * - Call throws exception
+     * - Call exceeds timeout
+     *
+     * @param {{param_name}} the request parameter
+     * @return the response from external service or fallback
+     */
+    @CircuitBreaker(name = CIRCUIT_BREAKER_NAME, fallbackMethod = "{{method_name}}Fallback")
+    @Retry(name = "externalApi")
+    @Bulkhead(name = CIRCUIT_BREAKER_NAME)
+    public {{return_type}} {{method_name}}({{param_type}} {{param_name}}) {
+        log.debug("Calling external service: {} with param: {}", externalServiceUrl, {{param_name}});
+
+        try {
+            {{return_type}} response = restTemplate.{{http_method}}ForObject(
+                    externalServiceUrl + "/{{endpoint}}",
+                    {{response_class}}.class,
+                    {{param_name}}
+            );
+
+            log.info("External service call successful");
+            return response;
+
+        } catch (Exception e) {
+            log.error("External service call failed: {}", e.getMessage());
+            throw e; // Will trigger circuit breaker and retry
+        }
+    }
+
+    /**
+     * Fallback method called when circuit breaker is OPEN or call fails.
+     *
+     * Provides degraded functionality when external service is unavailable.
+     * Returns cached data, default values, or throws custom exception.
+     *
+     * @param {{param_name}} the request parameter
+     * @param throwable the exception that triggered fallback
+     * @return fallback response
+     */
+    private {{return_type}} {{method_name}}Fallback({{param_type}} {{param_name}}, Throwable throwable) {
+        log.warn("Circuit breaker FALLBACK triggered for {}: {}",
+                {{param_name}}, throwable.getMessage());
+
+        // Option 1: Return cached data
+        // return cacheService.getCached{{entity_name}}({{param_name}});
+
+        // Option 2: Return default/empty response
+        // return {{create_default_response}};
+
+        // Option 3: Throw custom exception
+        throw new ExternalServiceUnavailableException(
+                "External service temporarily unavailable. Please try again later.",
+                throwable
+        );
+    }
+
+    /**
+     * Call external service with only Retry pattern (no circuit breaker).
+     *
+     * Use this for operations where you want automatic retries
+     * but don't need circuit breaker protection.
+     *
+     * @param {{param_name}} the request parameter
+     * @return the response
+     */
+    @Retry(name = "externalApi", fallbackMethod = "{{simple_method_name}}Fallback")
+    public {{return_type}} {{simple_method_name}}({{param_type}} {{param_name}}) {
+        log.debug("Calling external service with retry: {}", {{param_name}});
+
+        return restTemplate.{{http_method}}ForObject(
+                externalServiceUrl + "/{{simple_endpoint}}",
+                {{response_class}}.class,
+                {{param_name}}
+        );
+    }
+
+    /**
+     * Fallback for retry-only method.
+     */
+    private {{return_type}} {{simple_method_name}}Fallback({{param_type}} {{param_name}}, Throwable throwable) {
+        log.error("All retry attempts failed for {}: {}", {{param_name}}, throwable.getMessage());
+        throw new ExternalServiceUnavailableException(
+                "Service unavailable after " + "{{max_retry_attempts}}" + " attempts",
+                throwable
+        );
+    }
+
+    /**
+     * Bulkhead-protected operation for resource-intensive tasks.
+     *
+     * Bulkhead pattern limits concurrent executions to prevent
+     * resource exhaustion (thread pool saturation, memory issues).
+     *
+     * @param {{param_name}} the request parameter
+     * @return the response
+     */
+    @Bulkhead(name = "heavyOperations", type = Bulkhead.Type.THREADPOOL)
+    public {{return_type}} {{heavy_method_name}}({{param_type}} {{param_name}}) {
+        log.debug("Executing heavy operation with bulkhead protection: {}", {{param_name}});
+
+        // Simulate heavy operation
+        {{heavy_operation_logic}}
+
+        return {{create_response}};
+    }
+}

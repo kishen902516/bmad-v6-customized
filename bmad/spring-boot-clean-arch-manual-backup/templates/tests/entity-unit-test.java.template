@@ -1,0 +1,81 @@
+package {{base_package}}.domain.entity;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import static org.assertj.core.api.Assertions.*;
+
+/**
+ * Unit tests for {{entity_name}} domain entity.
+ *
+ * Tests business logic, validations, and invariant enforcement.
+ * No external dependencies - pure domain logic testing.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@DisplayName("{{entity_name}} Entity Tests")
+class {{entity_name}}Test {
+
+    @Test
+    @DisplayName("Should create valid {{entity_name}} with required fields")
+    void shouldCreateValidEntity() {
+        // Given
+        {{test_data_setup}}
+
+        // When
+        {{entity_name}} {{entity_name_camel}} = new {{entity_name}}({{constructor_args}});
+
+        // Then
+        assertThat({{entity_name_camel}}).isNotNull();
+        {{field_assertions}}
+    }
+
+    @Test
+    @DisplayName("Should throw exception when {{required_field}} is null")
+    void shouldThrowExceptionWhenRequiredFieldIsNull() {
+        // Given
+        {{test_data_with_null_field}}
+
+        // When / Then
+        assertThatThrownBy(() -> new {{entity_name}}({{constructor_args_with_null}}))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("{{field_name}}");
+    }
+
+    {{validation_tests}}
+
+    {{business_method_tests}}
+
+    @Test
+    @DisplayName("Should implement equals and hashCode based on ID")
+    void shouldImplementEqualsAndHashCodeBasedOnId() {
+        // Given
+        {{entity_name}} entity1 = new {{entity_name}}({{constructor_args}});
+        {{entity_name}} entity2 = new {{entity_name}}({{constructor_args}});
+
+        // When / Then
+        assertThat(entity1).isNotEqualTo(entity2); // Different instances
+
+        // If they have the same ID (after persistence), they should be equal
+        // This would be tested in integration tests
+    }
+
+    @Test
+    @DisplayName("Should have meaningful toString representation")
+    void shouldHaveMeaningfulToString() {
+        // Given
+        {{entity_name}} {{entity_name_camel}} = new {{entity_name}}({{constructor_args}});
+
+        // When
+        String toString = {{entity_name_camel}}.toString();
+
+        // Then
+        assertThat(toString)
+                .contains("{{entity_name}}")
+                {{toString_assertions}};
+    }
+}

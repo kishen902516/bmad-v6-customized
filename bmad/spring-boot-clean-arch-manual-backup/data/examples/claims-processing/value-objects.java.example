@@ -1,0 +1,300 @@
+package {{base_package}}.domain.valueobject;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Year;
+import java.util.Objects;
+
+// ==================== ClaimNumber ====================
+
+/**
+ * ClaimNumber Value Object
+ *
+ * Unique identifier for insurance claims
+ * Format: CLM-YYYY-NNNNNN (e.g., CLM-2024-000123)
+ *
+ * Immutable using Java 21 Record
+ */
+public record ClaimNumber(String value) {
+
+    private static final String PREFIX = "CLM";
+    private static final String PATTERN = "^CLM-\\d{4}-\\d{6}$";
+    private static int sequence = 0;
+
+    public ClaimNumber {
+        Objects.requireNonNull(value, "Claim number cannot be null");
+        if (!value.matches(PATTERN)) {
+            throw new IllegalArgumentException(
+                "Invalid claim number format. Expected: CLM-YYYY-NNNNNN, got: " + value
+            );
+        }
+    }
+
+    /**
+     * Generate a new claim number with current year
+     */
+    public static ClaimNumber generate() {
+        int year = Year.now().getValue();
+        sequence++;
+        String formattedSequence = String.format("%06d", sequence);
+        return new ClaimNumber(String.format("%s-%d-%s", PREFIX, year, formattedSequence));
+    }
+
+    /**
+     * Create from string value
+     */
+    public static ClaimNumber of(String value) {
+        return new ClaimNumber(value);
+    }
+
+    @Override
+    public String toString() {
+        return value;
+    }
+}
+
+// ==================== ClaimStatus ====================
+
+/**
+ * ClaimStatus Enum
+ *
+ * Represents the lifecycle states of an insurance claim
+ *
+ * State Transitions:
+ * DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED/REJECTED → PAID
+ */
+public enum ClaimStatus {
+    /**
+     * Claim created but not yet submitted
+     */
+    DRAFT("Draft"),
+
+    /**
+     * Claim submitted for processing
+     */
+    SUBMITTED("Submitted"),
+
+    /**
+     * Claim under review by adjuster
+     */
+    UNDER_REVIEW("Under Review"),
+
+    /**
+     * Claim approved for payment
+     */
+    APPROVED("Approved"),
+
+    /**
+     * Claim rejected
+     */
+    REJECTED("Rejected"),
+
+    /**
+     * Claim payment completed
+     */
+    PAID("Paid");
+
+    private final String displayName;
+
+    ClaimStatus(String displayName) {
+        this.displayName = displayName;
+    }
+
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    /**
+     * Check if this is a final status (no further transitions)
+     */
+    public boolean isFinal() {
+        return this == REJECTED || this == PAID;
+    }
+
+    /**
+     * Check if this status allows editing
+     */
+    public boolean allowsEditing() {
+        return this == DRAFT;
+    }
+}
+
+// ==================== ClaimAmount ====================
+
+/**
+ * ClaimAmount Value Object
+ *
+ * Represents a monetary amount for a claim
+ * Enforces positive amounts and currency validation
+ *
+ * Immutable using Java 21 Record
+ */
+public record ClaimAmount(BigDecimal amount, String currency) {
+
+    public ClaimAmount {
+        Objects.requireNonNull(amount, "Amount cannot be null");
+        Objects.requireNonNull(currency, "Currency cannot be null");
+
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Claim amount must be greater than zero");
+        }
+
+        if (currency.length() != 3) {
+            throw new IllegalArgumentException("Currency must be 3-letter ISO code (e.g., USD, EUR)");
+        }
+    }
+
+    /**
+     * Create a claim amount from double value
+     */
+    public static ClaimAmount of(double amount, String currency) {
+        return new ClaimAmount(BigDecimal.valueOf(amount), currency);
+    }
+
+    /**
+     * Add two amounts (must have same currency)
+     */
+    public ClaimAmount add(ClaimAmount other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new IllegalArgumentException(
+                String.format("Cannot add amounts with different currencies: %s and %s",
+                    this.currency, other.currency)
+            );
+        }
+        return new ClaimAmount(this.amount.add(other.amount), this.currency);
+    }
+
+    /**
+     * Check if this amount is greater than another
+     */
+    public boolean isGreaterThan(ClaimAmount other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new IllegalArgumentException("Cannot compare amounts with different currencies");
+        }
+        return this.amount.compareTo(other.amount) > 0;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s %s", currency, amount);
+    }
+}
+
+// ==================== IncidentDetails ====================
+
+/**
+ * IncidentDetails Value Object
+ *
+ * Captures details about the incident that led to the claim
+ *
+ * Immutable using Java 21 Record
+ */
+public record IncidentDetails(
+        LocalDate incidentDate,
+        String location,
+        String description) {
+
+    private static final int MIN_DESCRIPTION_LENGTH = 20;
+
+    public IncidentDetails {
+        Objects.requireNonNull(incidentDate, "Incident date is required");
+        Objects.requireNonNull(location, "Incident location is required");
+        Objects.requireNonNull(description, "Incident description is required");
+
+        if (incidentDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("Incident date cannot be in the future");
+        }
+
+        if (location.isBlank()) {
+            throw new IllegalArgumentException("Incident location cannot be blank");
+        }
+
+        if (description.length() < MIN_DESCRIPTION_LENGTH) {
+            throw new IllegalArgumentException(
+                String.format("Incident description must be at least %d characters", MIN_DESCRIPTION_LENGTH)
+            );
+        }
+    }
+
+    /**
+     * Check if incident occurred within the last N days
+     */
+    public boolean occurredWithinDays(int days) {
+        LocalDate cutoffDate = LocalDate.now().minusDays(days);
+        return incidentDate.isAfter(cutoffDate) || incidentDate.isEqual(cutoffDate);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Incident on %s at %s", incidentDate, location);
+    }
+}
+
+// ==================== AdjudicationResult ====================
+
+/**
+ * AdjudicationResult Value Object
+ *
+ * Represents the outcome of claim adjudication
+ * Contains approval decision, approved amount (if approved), and reasoning
+ *
+ * Immutable using Java 21 Record
+ */
+public record AdjudicationResult(
+        boolean approved,
+        ClaimAmount approvedAmount,
+        String reason,
+        String adjusterNotes) {
+
+    public AdjudicationResult {
+        Objects.requireNonNull(reason, "Adjudication reason is required");
+
+        if (approved && approvedAmount == null) {
+            throw new IllegalArgumentException("Approved amount is required when claim is approved");
+        }
+
+        if (!approved && approvedAmount != null) {
+            throw new IllegalArgumentException("Approved amount should be null when claim is rejected");
+        }
+
+        if (reason.isBlank()) {
+            throw new IllegalArgumentException("Adjudication reason cannot be blank");
+        }
+    }
+
+    /**
+     * Create an approval result
+     */
+    public static AdjudicationResult approve(
+            ClaimAmount approvedAmount,
+            String reason,
+            String adjusterNotes) {
+        return new AdjudicationResult(true, approvedAmount, reason, adjusterNotes);
+    }
+
+    /**
+     * Create a rejection result
+     */
+    public static AdjudicationResult reject(String reason, String adjusterNotes) {
+        return new AdjudicationResult(false, null, reason, adjusterNotes);
+    }
+
+    /**
+     * Check if this is a partial approval (approved amount < claimed amount)
+     */
+    public boolean isPartialApproval(ClaimAmount claimedAmount) {
+        if (!approved || approvedAmount == null) {
+            return false;
+        }
+        return approvedAmount.amount().compareTo(claimedAmount.amount()) < 0;
+    }
+
+    @Override
+    public String toString() {
+        if (approved) {
+            return String.format("APPROVED: %s - %s", approvedAmount, reason);
+        } else {
+            return String.format("REJECTED: %s", reason);
+        }
+    }
+}
