@@ -1,0 +1,186 @@
+package {{base_package}}.infrastructure.adapter.persistence.mapper;
+
+import {{base_package}}.domain.entity.{{entity_name}};
+import {{base_package}}.infrastructure.adapter.persistence.entity.{{entity_name}}JpaEntity;
+{{imports}}
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+/**
+ * Mapper between domain entity and JPA entity.
+ *
+ * Converts between Clean Architecture domain model and JPA persistence model.
+ * This separation allows:
+ * - Domain to remain framework-independent
+ * - Different persistence strategies without affecting domain
+ * - Flexibility to change ORM frameworks
+ *
+ * Design Principles:
+ * - Null-safe (handles null inputs gracefully)
+ * - Stateless (all methods are static)
+ * - Pure functions (no side effects)
+ * - Bidirectional mapping (domain ↔ JPA)
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+public class {{entity_name}}Mapper {
+
+    /**
+     * Private constructor to prevent instantiation.
+     * This is a utility class with only static methods.
+     */
+    private {{entity_name}}Mapper() {
+        throw new UnsupportedOperationException("Utility class cannot be instantiated");
+    }
+
+    // ========== Domain → JPA ==========
+
+    /**
+     * Convert domain entity to JPA entity.
+     * Handles null input gracefully.
+     *
+     * @param domain the domain entity (can be null)
+     * @return the JPA entity, or null if input is null
+     */
+    public static {{entity_name}}JpaEntity toJpa({{entity_name}} domain) {
+        if (domain == null) {
+            return null;
+        }
+
+        {{entity_name}}JpaEntity jpa = new {{entity_name}}JpaEntity();
+        jpa.setId(domain.getId());
+        {{field_mappings_to_jpa}}
+        jpa.setCreatedAt(domain.getCreatedAt());
+        jpa.setUpdatedAt(domain.getUpdatedAt());
+        jpa.setCreatedBy(domain.getCreatedBy());
+        jpa.setUpdatedBy(domain.getUpdatedBy());
+
+        return jpa;
+    }
+
+    /**
+     * Convert list of domain entities to JPA entities.
+     *
+     * @param domainList list of domain entities
+     * @return list of JPA entities
+     */
+    public static List<{{entity_name}}JpaEntity> toJpaList(List<{{entity_name}}> domainList) {
+        if (domainList == null) {
+            return List.of();
+        }
+
+        return domainList.stream()
+                .map({{entity_name}}Mapper::toJpa)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    // ========== JPA → Domain ==========
+
+    /**
+     * Convert JPA entity to domain entity.
+     * Handles null input gracefully.
+     *
+     * @param jpa the JPA entity (can be null)
+     * @return the domain entity, or null if input is null
+     */
+    public static {{entity_name}} toDomain({{entity_name}}JpaEntity jpa) {
+        if (jpa == null) {
+            return null;
+        }
+
+        return new {{entity_name}}(
+            jpa.getId(),
+            {{constructor_args_from_jpa}},
+            jpa.getCreatedAt(),
+            jpa.getUpdatedAt()
+        );
+    }
+
+    /**
+     * Convert list of JPA entities to domain entities.
+     *
+     * @param jpaList list of JPA entities
+     * @return list of domain entities
+     */
+    public static List<{{entity_name}}> toDomainList(List<{{entity_name}}JpaEntity> jpaList) {
+        if (jpaList == null) {
+            return List.of();
+        }
+
+        return jpaList.stream()
+                .map({{entity_name}}Mapper::toDomain)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    // ========== Update Operations ==========
+
+    /**
+     * Update existing JPA entity from domain entity.
+     * Used for update operations to preserve ID and version.
+     *
+     * @param jpa the JPA entity to update (not null)
+     * @param domain the source domain entity (not null)
+     * @throws IllegalArgumentException if either parameter is null
+     */
+    public static void updateJpaFromDomain({{entity_name}}JpaEntity jpa, {{entity_name}} domain) {
+        Objects.requireNonNull(jpa, "JPA entity cannot be null");
+        Objects.requireNonNull(domain, "Domain entity cannot be null");
+
+        // Update fields (ID and version are not updated)
+        {{field_updates_from_domain}}
+        jpa.setUpdatedBy(domain.getUpdatedBy());
+        // updatedAt is handled by @UpdateTimestamp
+    }
+
+    /**
+     * Update existing domain entity from JPA entity.
+     * Useful for refresh operations.
+     *
+     * @param domain the domain entity to update (not null)
+     * @param jpa the source JPA entity (not null)
+     * @throws IllegalArgumentException if either parameter is null
+     */
+    public static void updateDomainFromJpa({{entity_name}} domain, {{entity_name}}JpaEntity jpa) {
+        Objects.requireNonNull(domain, "Domain entity cannot be null");
+        Objects.requireNonNull(jpa, "JPA entity cannot be null");
+
+        // Update fields via package-private setters
+        {{field_updates_from_jpa}}
+    }
+
+    // ========== Value Object Mapping Helpers ==========
+
+    {{value_object_mapping_helpers}}
+
+    // ========== Collection Mapping Helpers ==========
+
+    {{collection_mapping_helpers}}
+
+    // ========== Validation Helpers ==========
+
+    /**
+     * Validates that the domain entity is ready for persistence.
+     *
+     * @param domain the domain entity to validate
+     * @throws IllegalStateException if entity is not valid
+     */
+    public static void validateForPersistence({{entity_name}} domain) {
+        Objects.requireNonNull(domain, "Domain entity cannot be null");
+        domain.validate();
+        {{additional_persistence_validations}}
+    }
+
+    /**
+     * Checks if the domain entity is new (not yet persisted).
+     *
+     * @param domain the domain entity
+     * @return true if entity is new (no ID assigned)
+     */
+    public static boolean isNew({{entity_name}} domain) {
+        return domain != null && domain.getId() == null;
+    }
+}

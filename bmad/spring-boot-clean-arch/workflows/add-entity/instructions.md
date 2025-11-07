@@ -2,6 +2,7 @@
 
 <critical>This workflow adds a domain entity following Test-Driven Development (TDD) and Git Flow</critical>
 <critical>All code follows the Red-Green-Refactor cycle with proper git commits and GitHub issue tracking</critical>
+<critical>Communicate with {user_name} in {communication_language} throughout this workflow</critical>
 
 <workflow>
 
@@ -109,20 +110,31 @@ Enter business rules (one per line, type 'done' when finished):</ask>
 <action>From attribute_list, identify custom Value Objects that need to be created</action>
 
 <check if="value objects needed">
+  <action>Load Value Object template from {value_object_template}</action>
   <action for-each="value object in value_objects_needed">
-    Create Value Object as Java Record in {base_package}/domain/valueobject/
-    - Compact constructor with validation
-    - Business methods if needed
-    - Proper equals/hashCode (automatic with Record)
+    Generate Value Object using template:
+    - Apply template to create Java Record in {base_package}/domain/valueobject/
+    - Replace {{VALUE_OBJECT_NAME}} with value object name
+    - Replace {{BASE_PACKAGE}} with {base_package}
+    - Add compact constructor with validation
+    - Include business methods if needed
+    - equals/hashCode automatic with Record
   </action>
 </check>
 </step>
 
 <step n="7" goal="Generate domain entity">
-<action>Create {entity_name}.java in {base_package}/domain/entity/</action>
+<action>Load domain entity template from {entity_template}</action>
+<action>Load TDD guide from {tdd_guide} for reference</action>
 
-<action>Generate entity class with:
-- Private fields for all attributes
+<action>Generate entity class using template:
+- Apply template and replace placeholders:
+  - {{ENTITY_NAME}} → {entity_name}
+  - {{BASE_PACKAGE}} → {base_package}
+  - {{ATTRIBUTES}} → generated fields from attribute_list
+  - {{BUSINESS_METHODS}} → generated methods from business_rules
+  - {{JAVADOC}} → entity_description
+- Ensure private fields for all attributes
 - Constructor with required fields (invariant enforcement)
 - Private setters, public getters
 - Business methods based on business_rules
@@ -131,86 +143,115 @@ Enter business rules (one per line, type 'done' when finished):</ask>
 - NO framework annotations (pure domain)
 </action>
 
-<action>Add JavaDoc with entity_description and usage examples</action>
+<action>Write generated entity to {base_package}/domain/entity/{entity_name}.java</action>
 </step>
 
 <step n="8" goal="Generate repository interface">
-<action>Create {entity_name}Repository.java interface in {base_package}/domain/port/</action>
+<action>Load repository interface template from {repository_interface_template}</action>
 
-<action>Generate repository interface with:
-- Standard methods: save(), findById(), findAll(), delete()
-- Custom query methods based on entity attributes
+<action>Generate repository interface using template:
+- Apply template and replace placeholders:
+  - {{ENTITY_NAME}} → {entity_name}
+  - {{BASE_PACKAGE}} → {base_package}
+  - {{CUSTOM_METHODS}} → query methods based on entity attributes
+- Include standard methods: save(), findById(), findAll(), delete()
+- Add custom query methods based on entity attributes
 - Methods return domain entities (not JPA entities)
 - NO Spring annotations (pure interface)
 </action>
+
+<action>Write generated interface to {base_package}/domain/port/{entity_name}Repository.java</action>
 </step>
 
 <step n="9" goal="Generate JPA entity and repository implementation">
-<action>Create {entity_name}JpaEntity.java in {base_package}/infrastructure/adapter/persistence/entity/</action>
+<action>Load JPA entity template from {jpa_entity_template}</action>
 
-<action>Generate JPA entity with:
-- @Entity, @Table annotations
-- @Id and @GeneratedValue for ID field
-- JPA annotations for relationships
-- Field mappings
+<action>Generate JPA entity using template:
+- Apply template and replace placeholders:
+  - {{ENTITY_NAME}} → {entity_name}
+  - {{BASE_PACKAGE}} → {base_package}
+  - {{FIELDS}} → JPA field mappings from attribute_list
+  - {{RELATIONSHIPS}} → JPA relationship annotations
+- Include @Entity, @Table annotations
+- Add @Id and @GeneratedValue for ID field
+- Apply JPA annotations for relationships
 </action>
 
-<action>Create {entity_name}RepositoryImpl.java in {base_package}/infrastructure/adapter/persistence/</action>
+<action>Write JPA entity to {base_package}/infrastructure/adapter/persistence/entity/{entity_name}JpaEntity.java</action>
 
-<action>Generate repository implementation with:
-- @Repository annotation
-- Implements domain repository interface
-- Uses Spring Data JPA repository internally
-- Maps between domain entity and JPA entity
-- Mapper methods for conversion
+<action>Load repository implementation template from {repository_impl_template}</action>
+
+<action>Generate repository implementation using template:
+- Apply template with replacements
+- Add @Repository annotation
+- Implement domain repository interface
+- Include Spring Data JPA repository internally
+- Add mapper methods for domain ↔ JPA entity conversion
 </action>
 
-<action>Create Spring Data JPA repository interface if needed</action>
+<action>Write to {base_package}/infrastructure/adapter/persistence/{entity_name}RepositoryImpl.java</action>
+
+<action>Load Spring Data JPA repository template from {jpa_repository_template}</action>
+<action>Generate Spring Data JPA repository interface</action>
+<action>Write to {base_package}/infrastructure/adapter/persistence/{entity_name}JpaRepository.java</action>
 </step>
 
 <step n="10" goal="Generate unit tests for domain entity">
-<action>Invoke Test Engineer Agent to generate unit tests</action>
+<action>Load Test Engineer agent context from {test_engineer_agent}</action>
+<action>Load entity test template from {entity_test_template}</action>
+<action>Reference TDD guide from {tdd_guide} for test patterns</action>
 
-<action>Create {entity_name}Test.java in test/{base_package}/domain/entity/</action>
-
-<action>Generate unit tests covering:
-- Constructor validation (invalid inputs throw exceptions)
-- Business method behavior
-- Invariant enforcement
-- Equals/hashCode contract
-- Edge cases
+<action>Generate unit tests using template and following Test Engineer guidelines:
+- Apply template and replace placeholders:
+  - {{ENTITY_NAME}} → {entity_name}
+  - {{BASE_PACKAGE}} → {base_package}
+  - {{TEST_CASES}} → generated from business_rules
+- Cover constructor validation (invalid inputs throw exceptions)
+- Test business method behavior
+- Verify invariant enforcement
+- Test equals/hashCode contract
+- Include edge cases
+- Use JUnit 5, parameterized tests for comprehensive coverage
 </action>
 
-<action>Use JUnit 5, parameterized tests for comprehensive coverage</action>
+<action>Write generated tests to test/{base_package}/domain/entity/{entity_name}Test.java</action>
 </step>
 
 <step n="11" goal="Generate integration tests for repository">
-<action>Invoke Test Engineer Agent to generate integration tests</action>
+<action>Load Test Engineer agent context from {test_engineer_agent}</action>
+<action>Load repository test template from {repository_test_template}</action>
+<action>Reference TDD guide from {tdd_guide} for integration test patterns</action>
 
-<action>Create {entity_name}RepositoryIntegrationTest.java in test/{base_package}/infrastructure/</action>
-
-<action>Generate integration tests with:
-- @SpringBootTest or @DataJpaTest
-- TestContainers for database
+<action>Generate integration tests using template and Test Engineer guidelines:
+- Apply template and replace placeholders:
+  - {{ENTITY_NAME}} → {entity_name}
+  - {{BASE_PACKAGE}} → {base_package}
+  - {{REPOSITORY_NAME}} → {entity_name}Repository
+- Include @SpringBootTest or @DataJpaTest
+- Add TestContainers for database
 - Test save, findById, findAll, delete operations
 - Test custom query methods
-- Database cleanup between tests
+- Add database cleanup between tests
 </action>
+
+<action>Write tests to test/{base_package}/infrastructure/{entity_name}RepositoryIntegrationTest.java</action>
 </step>
 
 <step n="12" goal="Run ArchUnit validation">
-<action>Invoke Architecture Validator Agent</action>
+<action>Load Architecture Validator agent context from {arch_validator_agent}</action>
+<action>Reference patterns folder {patterns_folder} for architecture rules</action>
 
-<action>Run ArchUnit tests to validate:
+<action>Following Architecture Validator agent guidelines, run ArchUnit tests to validate:
 - Entity is in correct package (domain.entity)
 - Entity has no framework annotations
 - Repository interface in domain.port
 - Repository implementation in infrastructure
 - Proper dependency direction
+- Clean Architecture layer boundaries respected
 </action>
 
 <check if="violations found">
-  <action>Report violations with fix suggestions</action>
+  <action>Report violations with fix suggestions from agent knowledge</action>
   <action>Fix violations</action>
   <goto step="12">Re-validate after fixes</goto>
 </check>
@@ -231,7 +272,7 @@ Enter business rules (one per line, type 'done' when finished):</ask>
 </step>
 
 <step n="14" goal="Present summary and next steps">
-<action>Display entity creation summary:
+<action>Display entity creation summary to {user_name}:
 - Entity: {entity_name}
 - Location: {base_package}/domain/entity/{entity_name}.java
 - Repository: {entity_name}Repository interface created
@@ -240,7 +281,7 @@ Enter business rules (one per line, type 'done' when finished):</ask>
 - Tests: Unit tests ✅ Integration tests ✅ Architecture tests ✅
 </action>
 
-<action>Suggest next steps:
+<action>Suggest next steps to {user_name}:
 1. Add use case to interact with {entity_name} (*add-use-case)
 2. Add REST endpoint to expose {entity_name} (*add-rest-endpoint)
 3. Add another related entity (*add-entity)

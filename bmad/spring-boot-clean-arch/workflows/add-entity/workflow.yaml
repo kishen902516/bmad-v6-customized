@@ -5,19 +5,73 @@ author: "Kishen Sivalingam"
 
 # Configuration source
 config_source: "{project-root}/bmad/spring-boot-clean-arch/config.yaml"
+
+# Critical variables from config
+output_folder: "{config_source}:output_folder"
+user_name: "{config_source}:user_name"
+communication_language: "{config_source}:communication_language"
+date: system-generated
+
+# Module paths
 module_data_path: "{config_source}:module_data_path"
+module_templates_path: "{config_source}:module_templates_path"
+module_agents_path: "{config_source}:module_agents_path"
 
 # Workflow paths
 installed_path: "{project-root}/bmad/spring-boot-clean-arch/workflows/add-entity"
 template: false  # This is an interactive workflow
 instructions: "{installed_path}/instructions.md"
 
-# Templates
-code_templates: "{module_data_path}/templates/entity"
-test_templates: "{module_data_path}/templates/tests"
+# Code templates
+entity_template: "{module_templates_path}/entity/domain-entity.java.template"
+jpa_entity_template: "{module_templates_path}/entity/jpa-entity.java.template"
+value_object_template: "{module_templates_path}/entity/value-object.java.template"
+repository_interface_template: "{module_templates_path}/repository/repository-interface.java.template"
+repository_impl_template: "{module_templates_path}/repository/repository-impl.java.template"
+jpa_repository_template: "{module_templates_path}/repository/jpa-repository.java.template"
+
+# Test templates
+entity_test_template: "{module_templates_path}/tests/entity-unit-test.java.template"
+repository_test_template: "{module_templates_path}/tests/repository-integration-test.java.template"
+
+# Data and guides
+tdd_guide: "{module_data_path}/TDD-WORKFLOW-GUIDE.md"
+patterns_folder: "{module_data_path}/patterns"
+
+# Agents
+test_engineer_agent: "{module_agents_path}/test-engineer.agent.yaml"
+arch_validator_agent: "{module_agents_path}/arch-validator.agent.yaml"
 
 # Target project context (provided at runtime)
-target_project_path: "{{project_path}}"
 base_package: "{{base_package}}"
 
 standalone: false  # Usually invoked from Spring Architecture Agent
+
+# Web bundle configuration
+web_bundle:
+  name: "add-entity"
+  description: "Add domain entity with complete layer support and synchronized tests"
+  author: "Kishen Sivalingam"
+
+  web_bundle_files:
+    - "bmad/spring-boot-clean-arch/workflows/add-entity/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/workflows/add-entity/instructions.md"
+    - "bmad/spring-boot-clean-arch/workflows/add-use-case/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/workflows/add-rest-endpoint/workflow.yaml"
+    - "bmad/spring-boot-clean-arch/config.yaml"
+    - "bmad/spring-boot-clean-arch/templates/entity/domain-entity.java.template"
+    - "bmad/spring-boot-clean-arch/templates/entity/jpa-entity.java.template"
+    - "bmad/spring-boot-clean-arch/templates/entity/value-object.java.template"
+    - "bmad/spring-boot-clean-arch/templates/repository/repository-interface.java.template"
+    - "bmad/spring-boot-clean-arch/templates/repository/repository-impl.java.template"
+    - "bmad/spring-boot-clean-arch/templates/repository/jpa-repository.java.template"
+    - "bmad/spring-boot-clean-arch/templates/tests/entity-unit-test.java.template"
+    - "bmad/spring-boot-clean-arch/templates/tests/repository-integration-test.java.template"
+    - "bmad/spring-boot-clean-arch/data/TDD-WORKFLOW-GUIDE.md"
+    - "bmad/spring-boot-clean-arch/agents/test-engineer.agent.yaml"
+    - "bmad/spring-boot-clean-arch/agents/arch-validator.agent.yaml"
+
+  existing_workflows:
+    - add_use_case: "bmad/spring-boot-clean-arch/workflows/add-use-case/workflow.yaml"
+    - add_rest_endpoint: "bmad/spring-boot-clean-arch/workflows/add-rest-endpoint/workflow.yaml"
+    - add_entity_recursive: "bmad/spring-boot-clean-arch/workflows/add-entity/workflow.yaml"

@@ -1,10 +1,13 @@
 # Validate Architecture Workflow Instructions
 
 <critical>Runs comprehensive ArchUnit validation and reports architectural compliance</critical>
+<critical>Communicate with {user_name} in {communication_language} throughout this workflow</critical>
 
 <workflow>
 
 <step n="1" goal="Identify target project">
+<action>Load Architecture Validator agent context from {arch_validator_agent}</action>
+<action>Reference patterns folder {patterns_folder} for validation rules</action>
 <check if="target_project_path not provided">
   <ask>Path to your Spring Boot Clean Architecture project?</ask>
   <action>Store target_project_path</action>
@@ -48,15 +51,16 @@
 </step>
 
 <step n="4" goal="Generate compliance report">
+<action>Load archunit templates from {archunit_templates}</action>
 <action>Create architecture-compliance-report.md with:
 - Overall status (Pass/Fail)
 - Violations count by category
-- Detailed violation list with fixes
+- Detailed violation list with fixes from Architecture Validator agent
 - Compliance score (% of rules passing)
-- Recommendations
+- Recommendations based on patterns
 </action>
 
-<action>Save report to project root</action>
+<action>Save report to {output_folder}/architecture-compliance-report-{date}.md</action>
 </step>
 
 <step n="5" goal="Offer to fix violations">
@@ -96,11 +100,11 @@
 </step>
 
 <step n="6" goal="Present summary">
-<action>Display validation summary:
+<action>Display validation summary to {user_name}:
 - Project: {target_project_path}
 - Validation Status: {Pass/Fail}
 - Violations: {count}
-- Report: architecture-compliance-report.md
+- Report: {output_folder}/architecture-compliance-report-{date}.md
 - Next Steps: {suggested actions}
 </action>
 </step>

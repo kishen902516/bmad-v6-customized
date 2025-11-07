@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(mkdir -p:*)",
-      "Bash(gh:*)"
+      "Bash(gh:*)",
+      "Bash(for dir in apply-pattern bootstrap-project generate-documentation scaffold-feature validate-architecture)",
+      "Bash(do echo \"Processing $dir\")",
+      "Bash(test:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

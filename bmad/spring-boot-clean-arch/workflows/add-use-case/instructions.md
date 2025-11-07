@@ -1,6 +1,7 @@
 # Add Use Case Workflow Instructions
 
 <critical>This workflow adds an application service use case with complete orchestration logic and synchronized tests</critical>
+<critical>Communicate with {user_name} in {communication_language} throughout this workflow</critical>
 
 <workflow>
 
@@ -137,66 +138,83 @@ Enter validation rules (one per line, type 'done' when finished):</ask>
 
 <step n="8" goal="Generate input DTO">
 <check if="input_dto_fields not empty">
-  <action>Create {use_case_name}Input.java as Record in {base_package}/application/dto/</action>
-
-  <action>Generate input DTO Record with:
-  - All input fields
-  - Compact constructor with validation based on validation_rules
-  - JavaDoc with field descriptions
-  - Validation annotations if appropriate (Jakarta Bean Validation)
+  <action>Load DTO template from {dto_template}</action>
+  <action>Generate input DTO Record using template:
+  - {{DTO_NAME}} → {use_case_name}Input
+  - {{BASE_PACKAGE}} → {base_package}
+  - {{FIELDS}} → input_dto_fields
+  - {{VALIDATIONS}} → validation_rules
+  - Include compact constructor with validation
+  - Add JavaDoc with field descriptions
+  - Include validation annotations (Jakarta Bean Validation)
   </action>
+  <action>Write to {base_package}/application/dto/{use_case_name}Input.java</action>
 </check>
 </step>
 
 <step n="9" goal="Generate output DTO">
 <check if="output_dto != void">
-  <action>Create {use_case_name}Output.java as Record in {base_package}/application/dto/</action>
-
-  <action>Generate output DTO Record with:
-  - All output fields
-  - JavaDoc with field descriptions
-  - Factory methods if useful (e.g., from domain entity)
+  <action>Load DTO template from {dto_template}</action>
+  <action>Generate output DTO Record using template:
+  - {{DTO_NAME}} → {use_case_name}Output
+  - {{BASE_PACKAGE}} → {base_package}
+  - {{FIELDS}} → output_dto_fields
+  - Add JavaDoc with field descriptions
+  - Include factory methods if useful
   </action>
+  <action>Write to {base_package}/application/dto/{use_case_name}Output.java</action>
 </check>
 </step>
 
 <step n="10" goal="Generate use case interface">
-<action>Create {use_case_name}UseCase.java interface in {base_package}/application/usecase/</action>
-
-<action>Generate use case interface with:
-- Single method: execute(Input) → Output
-- Or handle(Command) → Result
-- Or process(Query) → Result
-- JavaDoc describing the use case and preconditions
+<action>Load use case interface template from {use_case_interface_template}</action>
+<action>Generate interface using template:
+- {{USE_CASE_NAME}} → {use_case_name}
+- {{BASE_PACKAGE}} → {base_package}
+- {{INPUT_TYPE}} → input DTO name or void
+- {{OUTPUT_TYPE}} → output DTO name or void
+- {{DESCRIPTION}} → use_case_description
+- Include method: execute(Input) → Output
+- Add comprehensive JavaDoc
 </action>
+<action>Write to {base_package}/application/usecase/{use_case_name}UseCase.java</action>
 </step>
 
 <step n="11" goal="Generate use case implementation">
-<action>Create {use_case_name}Service.java in {base_package}/application/service/</action>
+<action>Load use case implementation template from {use_case_impl_template}</action>
+<action>Reference TDD guide from {tdd_guide}</action>
 
-<action>Generate use case implementation with:
-- @Service annotation
-- Implements use case interface
-- Constructor injection for all dependencies
-- @Transactional annotation (if writes data)
-- execute() method implementing business logic flow
-- Private helper methods for each major step
-- Validation logic
-- Error handling
-- Logging
+<action>Generate implementation using template:
+- {{USE_CASE_NAME}} → {use_case_name}
+- {{BASE_PACKAGE}} → {base_package}
+- {{DEPENDENCIES}} → repository_dependencies, domain_service_dependencies
+- {{BUSINESS_LOGIC}} → business_logic_steps
+- {{VALIDATIONS}} → validation_rules
+- Include @Service annotation
+- Implement use case interface
+- Add constructor injection for all dependencies
+- Add @Transactional annotation (if writes data)
+- Implement execute() method with business logic flow
+- Add private helper methods for each major step
+- Include validation logic
+- Add error handling
+- Add logging
 </action>
-
-<action>Implement business logic based on business_logic_steps</action>
+<action>Write to {base_package}/application/service/{use_case_name}Service.java</action>
 </step>
 
 <step n="12" goal="Generate unit tests">
-<action>Invoke Test Engineer Agent</action>
+<action>Load Test Engineer agent context from {test_engineer_agent}</action>
+<action>Load use case test template from {use_case_test_template}</action>
+<action>Reference TDD guide from {tdd_guide}</action>
 
-<action>Create {use_case_name}ServiceTest.java in test/{base_package}/application/service/</action>
-
-<action>Generate unit tests with:
-- @ExtendWith(MockitoExtension.class)
-- Mock all dependencies (repositories, domain services)
+<action>Generate unit tests using template and Test Engineer guidelines:
+- {{USE_CASE_NAME}} → {use_case_name}
+- {{BASE_PACKAGE}} → {base_package}
+- {{DEPENDENCIES}} → all mocked dependencies
+- {{TEST_CASES}} → derived from validation_rules and business_logic_steps
+- Include @ExtendWith(MockitoExtension.class)
+- Mock all dependencies
 - Test successful execution path
 - Test validation failures
 - Test business rule violations
@@ -204,27 +222,28 @@ Enter validation rules (one per line, type 'done' when finished):</ask>
 - Verify interactions with mocks
 - Use meaningful test names (shouldX_whenY_givenZ)
 </action>
+<action>Write to test/{base_package}/application/service/{use_case_name}ServiceTest.java</action>
 </step>
 
 <step n="13" goal="Generate integration test">
-<action>Invoke Test Engineer Agent</action>
+<action>Load Test Engineer agent context from {test_engineer_agent}</action>
+<action>Reference TDD guide from {tdd_guide}</action>
 
-<action>Create {use_case_name}IntegrationTest.java in test/{base_package}/application/</action>
-
-<action>Generate integration test with:
-- @SpringBootTest
-- TestContainers for database
-- Real repository implementations
+<action>Generate integration test following Test Engineer guidelines:
+- Include @SpringBootTest
+- Add TestContainers for database
+- Use real repository implementations
 - Test complete use case flow end-to-end
 - Verify data persisted correctly
 - Test transaction rollback on errors
 </action>
+<action>Write to test/{base_package}/application/{use_case_name}IntegrationTest.java</action>
 </step>
 
 <step n="14" goal="Run ArchUnit validation">
-<action>Invoke Architecture Validator Agent</action>
+<action>Load Architecture Validator agent context from {arch_validator_agent}</action>
 
-<action>Run ArchUnit tests to validate:
+<action>Following Architecture Validator guidelines, run ArchUnit tests to validate:
 - Use case interface in application.usecase
 - Service implementation in application.service
 - DTOs in application.dto
@@ -253,7 +272,7 @@ Enter validation rules (one per line, type 'done' when finished):</ask>
 </step>
 
 <step n="16" goal="Present summary and next steps">
-<action>Display use case creation summary:
+<action>Display use case creation summary to {user_name}:
 - Use Case: {use_case_name}
 - Type: {use_case_type}
 - Input: {use_case_name}Input (if applicable)
@@ -262,7 +281,7 @@ Enter validation rules (one per line, type 'done' when finished):</ask>
 - Tests: Unit tests ✅ Integration tests ✅ Architecture tests ✅
 </action>
 
-<action>Suggest next steps:
+<action>Suggest next steps to {user_name}:
 1. Add REST endpoint to expose this use case (*add-rest-endpoint)
 2. Add another related use case (*add-use-case)
 3. Validate full architecture (*validate-architecture)

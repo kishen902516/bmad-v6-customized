@@ -2,10 +2,15 @@
 
 An intelligent, interactive system for generating Spring Boot 3.x applications with Java 21 that strictly follow Clean Architecture principles and Domain-Driven Design patterns.
 
+**🎯 Now with Git Flow + Test-Driven Development (TDD) Integration!**
+
 ## Overview
 
 Unlike Spring Initializr which generates basic boilerplate, this module creates fully-structured, well-architected applications with:
 
+- **🔴🟢🔵 Test-Driven Development (TDD) Enforced** - All features follow Red-Green-Refactor cycle automatically
+- **🌿 Git Flow Workflow Integrated** - Automatic feature branches, GitHub issues, and PR management
+- **📋 GitHub Projects Tracking** - Every feature tracked with custom TDD phase field
 - **Automated ArchUnit Enforcement** - Architecture violations fail the build, not just warnings
 - **Complete Test Generation** - Unit, Integration, Contract (Pact), E2E, and Architecture tests generated automatically
 - **Consumer-Driven Contract Testing** - Pact integration for robust microservices contract verification
@@ -25,6 +30,11 @@ During installation, you'll configure:
 - **Default Scenario** - Simple CRUD, Enterprise Microservice, or Complex Domain-Rich
 - **Example Domains** - Include insurance industry examples (Policy Management, Claims Processing, Underwriting)
 - **ArchUnit Strictness** - Relaxed, Standard, or Strict enforcement
+
+**Prerequisites:**
+- Git installed and configured
+- GitHub CLI (`gh`) installed and authenticated (for full Git Flow + GitHub Projects integration)
+- GitHub account (optional, for issue tracking and project boards)
 
 ## Components
 
@@ -56,13 +66,15 @@ During installation, you'll configure:
 
 ### Workflows (9)
 
+**All workflows now follow TDD (Red-Green-Refactor) and Git Flow automatically!**
+
 **Core Workflows:**
-1. **bootstrap-project** - Initialize new Clean Architecture project with scenario selection
-2. **add-entity** - Add domain entity with complete layer support and synchronized tests
-3. **add-use-case** - Add application service use case with orchestration logic
+1. **bootstrap-project** - Initialize new Clean Architecture project with Git Flow and GitHub Projects setup
+2. **add-entity** - Add domain entity following TDD with automatic GitHub issue and feature branch
+3. **add-use-case** - Add application use case following TDD with mocked dependencies
 
 **Feature Workflows:**
-4. **add-rest-endpoint** - Add REST API endpoint with OpenAPI and contract tests
+4. **add-rest-endpoint** - Add REST API endpoint following TDD with Pact contract testing
 5. **add-repository** - Add repository with interface in domain and JPA implementation
 6. **scaffold-feature** - Add complete feature across all layers with conversational guidance
 7. **apply-pattern** - Apply design patterns (CQRS, Event Sourcing, Saga, etc.)
@@ -70,6 +82,76 @@ During installation, you'll configure:
 **Utility Workflows:**
 8. **validate-architecture** - Run complete ArchUnit validation suite
 9. **generate-documentation** - Auto-generate README, architecture diagrams, and API docs
+
+## 🔴🟢🔵 TDD + Git Flow Workflow
+
+Every feature automatically follows this professional development workflow:
+
+```
+1. 📋 GitHub Issue Created
+   - Structured template with acceptance criteria
+   - Labels: type:entity, layer:domain, tdd
+   - Added to GitHub Project board
+   - Custom fields: TDD Phase, Layer, Component Type
+
+2. 🌿 Feature Branch Created
+   - Branch: feature/{issue-number}-{description}
+   - Checked out from develop branch
+   - Ready for TDD cycle
+
+3. 🔴 RED Phase: Write Failing Tests
+   - Generate comprehensive test suite (~20-40 tests)
+   - Unit tests with JUnit 5 + Mockito
+   - Integration tests with TestContainers
+   - Contract tests with Pact
+   - Run tests → All FAIL (expected!)
+   - Commit: "test: add failing tests (RED) #{issue}"
+   - Update issue label: tdd:red
+
+4. 🟢 GREEN Phase: Make Tests Pass
+   - Generate implementation code
+   - Domain entities (pure, no framework)
+   - Application use cases
+   - Infrastructure adapters
+   - Presentation controllers
+   - Run tests → All PASS!
+   - Coverage: 90%+ guaranteed
+   - Commit: "feat: implement feature (GREEN) #{issue}"
+   - Update issue label: tdd:green
+
+5. 🔵 REFACTOR Phase: Improve Code
+   - Analyze for improvements
+   - Extract methods/value objects
+   - Improve naming and structure
+   - Run tests → Still PASSING!
+   - Commit: "refactor: improve design (REFACTOR) #{issue}"
+   - Update issue label: tdd:refactor
+
+6. ✅ Validation & Pull Request
+   - Run ArchUnit validation
+   - Run complete test suite
+   - Create PR to develop branch
+   - Update issue: tdd:complete, status:in-review
+   - Move issue in Project to "In Review"
+
+7. 🎯 Merge & Cleanup
+   - CI checks pass
+   - PR merged (squash merge)
+   - Issue closed automatically
+   - Feature branch deleted
+   - Switch back to develop
+
+Result: High-quality, well-tested code with full traceability!
+```
+
+### TDD Guarantees
+
+✅ **Tests written BEFORE code** - Can't skip TDD, it's enforced
+✅ **High test coverage** - 90%+ automatically
+✅ **Clean Architecture** - ArchUnit validates every feature
+✅ **Full traceability** - Issue → Branch → Commits → PR → Done
+✅ **GitHub Projects tracking** - Visual progress through TDD phases
+✅ **Pact contracts** - Microservices contract testing built-in
 
 ## Quick Start
 
@@ -90,35 +172,72 @@ The agent will guide you through:
 - Scenario selection (Simple CRUD, Enterprise, Complex)
 - Database choice (PostgreSQL, MySQL, H2)
 - ArchUnit strictness level
+- **Git Flow initialization** (optional)
+  - Initialize git repository
+  - Create main + develop branches
+  - Setup commit message templates
+- **GitHub integration** (optional)
+  - Create GitHub repository
+  - Setup GitHub Project board with custom fields
+  - Link repository to project
 - Optional insurance domain examples
 
 ### 3. Explore the Generated Project
 
 The agent generates a complete Spring Boot 3.x project with:
 - Clean Architecture layer structure
+- **Git Flow configured** (main + develop branches)
+- **GitHub Project** with TDD tracking
 - ArchUnit tests configured
 - Maven build configuration with Resilience4j
+- **CONTRIBUTING.md** with Git Flow + TDD guidelines
+- **docs/TDD-WORKFLOW-GUIDE.md** for developers
 - Database configuration
 - OpenAPI documentation
 - Resilience patterns (Circuit Breaker, Retry, Bulkhead)
 - Actuator monitoring endpoints
 - Example implementations (if selected)
 
-### 4. Add Features Interactively
+### 4. Add Features with TDD
 
-**Add an Entity:**
+All feature additions now follow TDD automatically!
+
+**Add an Entity (with TDD):**
 ```
 *add-entity
+
+→ Creates GitHub issue #42
+→ Creates branch: feature/42-add-policy-entity
+→ 🔴 Generates failing tests (~40 tests)
+→ 🟢 Generates implementation (entity, repository, mapper)
+→ 🔵 Suggests refactorings
+→ Creates PR to develop
+→ Merges and closes issue
 ```
 
-**Add a Use Case:**
+**Add a Use Case (with TDD):**
 ```
 *add-use-case
+
+→ Creates GitHub issue #43
+→ Creates branch: feature/43-add-create-policy-use-case
+→ 🔴 Generates use case tests with mocks (~20 tests)
+→ 🟢 Generates use case implementation
+→ 🔵 Improves orchestration logic
+→ Creates PR and merges
 ```
 
-**Add a REST Endpoint:**
+**Add a REST Endpoint (with TDD + Pact):**
 ```
 *add-rest-endpoint
+
+→ Creates GitHub issue #44
+→ Creates branch: feature/44-add-post-policies-endpoint
+→ 🔴 Generates MockMvc + Pact tests (~20 tests)
+→ 🟢 Generates controller with OpenAPI docs
+→ 🔵 Improves error handling
+→ Generates Pact contract file
+→ Creates PR and merges
 ```
 
 **Scaffold a Complete Feature:**
