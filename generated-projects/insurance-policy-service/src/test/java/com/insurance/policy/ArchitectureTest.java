@@ -100,6 +100,7 @@ class ArchitectureTest {
                 .that().haveSimpleNameEndingWith("Repository")
                 .and().areInterfaces()
                 .and().doNotHaveSimpleName("PolicySpringDataRepository")  // Exclude Spring Data repos
+                .and().doNotHaveSimpleName("ClaimSpringDataRepository")   // Exclude Spring Data repos
                 .should().resideInAPackage("..domain.port");
 
         rule.check(classes);
