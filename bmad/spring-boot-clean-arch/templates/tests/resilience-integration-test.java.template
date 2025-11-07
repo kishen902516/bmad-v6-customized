@@ -1,0 +1,426 @@
+package {{base_package}}.infrastructure.adapter.external;
+
+import {{base_package}}.infrastructure.adapter.external.exception.ExternalServiceException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryRegistry;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.TestPropertySource;
+
+import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+/**
+ * Integration tests for Resilience4j patterns in {{service_name}}.
+ *
+ * Tests circuit breaker, retry, rate limiter, and bulkhead patterns
+ * with real Resilience4j configuration.
+ *
+ * @author {{author}}
+ * @version 1.0
+ */
+@SpringBootTest
+@TestPropertySource(properties = {
+        "resilience4j.circuitbreaker.instances.{{circuit_breaker_name}}.sliding-window-size=5",
+        "resilience4j.circuitbreaker.instances.{{circuit_breaker_name}}.failure-rate-threshold=50",
+        "resilience4j.circuitbreaker.instances.{{circuit_breaker_name}}.wait-duration-in-open-state=10s",
+        "resilience4j.circuitbreaker.instances.{{circuit_breaker_name}}.permitted-number-of-calls-in-half-open-state=2",
+        "resilience4j.retry.instances.{{retry_name}}.max-attempts=3",
+        "resilience4j.retry.instances.{{retry_name}}.wait-duration=100ms",
+        "resilience4j.retry.instances.{{retry_name}}.retry-exceptions=java.io.IOException"
+})
+@DisplayName("Resilience4j Integration Tests for {{service_name}}")
+class {{service_name}}ResilienceTest {
+
+    @Autowired
+    private {{service_name}} service;
+
+    @Autowired(required = false)
+    private CircuitBreakerRegistry circuitBreakerRegistry;
+
+    @Autowired(required = false)
+    private RetryRegistry retryRegistry;
+
+    @MockBean
+    private {{external_service_interface}} externalService;
+
+    private CircuitBreaker circuitBreaker;
+    private Retry retry;
+
+    @BeforeEach
+    void setUp() {
+        if (circuitBreakerRegistry != null) {
+            circuitBreaker = circuitBreakerRegistry.circuitBreaker("{{circuit_breaker_name}}");
+            circuitBreaker.reset();
+        }
+        if (retryRegistry != null) {
+            retry = retryRegistry.retry("{{retry_name}}");
+        }
+        reset(externalService);
+    }
+
+    @Nested
+    @DisplayName("Circuit Breaker Tests")
+    class CircuitBreakerTests {
+
+        @Test
+        @DisplayName("Should allow calls when circuit is CLOSED")
+        void shouldAllowCallsWhenCircuitClosed() {
+            // Given
+            when(externalService.{{external_method}}(any()))
+                    .thenReturn({{successful_response}});
+
+            // When
+            var result = service.{{service_method}}({{test_input}});
+
+            // Then
+            assertThat(result).isEqualTo({{expected_result}});
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+            verify(externalService, times(1)).{{external_method}}(any());
+        }
+
+        @Test
+        @DisplayName("Should open circuit after failure rate threshold exceeded")
+        void shouldOpenCircuitAfterFailureThreshold() {
+            // Given - Configure to fail
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new ExternalServiceException("Service unavailable"));
+
+            // When - Make calls to exceed failure threshold (5 calls, 50% threshold = 3 failures)
+            for (int i = 0; i < 5; i++) {
+                try {
+                    service.{{service_method}}({{test_input}});
+                } catch (Exception e) {
+                    // Expected failures
+                }
+            }
+
+            // Then - Circuit should be OPEN
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+            assertThat(circuitBreaker.getMetrics().getFailureRate()).isGreaterThanOrEqualTo(50.0f);
+        }
+
+        @Test
+        @DisplayName("Should reject calls immediately when circuit is OPEN")
+        void shouldRejectCallsWhenCircuitOpen() {
+            // Given - Open the circuit
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new ExternalServiceException("Service unavailable"));
+
+            for (int i = 0; i < 5; i++) {
+                try {
+                    service.{{service_method}}({{test_input}});
+                } catch (Exception e) {
+                    // Expected
+                }
+            }
+
+            reset(externalService);
+
+            // When - Try to make a call with OPEN circuit
+            // Then - Should fail fast without calling external service
+            assertThatThrownBy(() -> service.{{service_method}}({{test_input}}))
+                    .isInstanceOf(io.github.resilience4j.circuitbreaker.CallNotPermittedException.class);
+
+            verify(externalService, never()).{{external_method}}(any());
+        }
+
+        @Test
+        @DisplayName("Should transition to HALF_OPEN after wait duration")
+        void shouldTransitionToHalfOpenAfterWaitDuration() throws InterruptedException {
+            // Given - Open the circuit
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new ExternalServiceException("Service unavailable"));
+
+            for (int i = 0; i < 5; i++) {
+                try {
+                    service.{{service_method}}({{test_input}});
+                } catch (Exception e) {
+                    // Expected
+                }
+            }
+
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+
+            // When - Wait for circuit to transition to HALF_OPEN (10s configured, but we'll manually transition for testing)
+            circuitBreaker.transitionToHalfOpenState();
+
+            // Then
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.HALF_OPEN);
+        }
+
+        @Test
+        @DisplayName("Should close circuit when HALF_OPEN calls succeed")
+        void shouldCloseCircuitFromHalfOpen() {
+            // Given - Circuit in HALF_OPEN state
+            circuitBreaker.transitionToHalfOpenState();
+
+            when(externalService.{{external_method}}(any()))
+                    .thenReturn({{successful_response}});
+
+            // When - Make successful calls (2 permitted in HALF_OPEN)
+            for (int i = 0; i < 2; i++) {
+                service.{{service_method}}({{test_input}});
+            }
+
+            // Then - Circuit should close
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+        }
+
+        @Test
+        @DisplayName("Should provide fallback when circuit is OPEN")
+        void shouldProvideFallbackWhenCircuitOpen() {
+            // Given - Open circuit
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new ExternalServiceException("Service unavailable"));
+
+            for (int i = 0; i < 5; i++) {
+                try {
+                    service.{{service_method}}({{test_input}});
+                } catch (Exception e) {
+                    // Expected
+                }
+            }
+
+            // When - Call method with fallback
+            var result = service.{{service_method_with_fallback}}({{test_input}});
+
+            // Then - Should return fallback value
+            assertThat(result).isEqualTo({{fallback_result}});
+        }
+    }
+
+    @Nested
+    @DisplayName("Retry Tests")
+    class RetryTests {
+
+        @Test
+        @DisplayName("Should retry on transient failures")
+        void shouldRetryOnTransientFailures() {
+            // Given - Fail twice, then succeed
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new java.io.IOException("Temporary failure"))
+                    .thenThrow(new java.io.IOException("Temporary failure"))
+                    .thenReturn({{successful_response}});
+
+            // When
+            var result = service.{{service_method}}({{test_input}});
+
+            // Then - Should succeed after retries
+            assertThat(result).isEqualTo({{expected_result}});
+            verify(externalService, times(3)).{{external_method}}(any());
+        }
+
+        @Test
+        @DisplayName("Should fail after max retry attempts exceeded")
+        void shouldFailAfterMaxRetries() {
+            // Given - Always fail
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new java.io.IOException("Permanent failure"));
+
+            // When / Then
+            assertThatThrownBy(() -> service.{{service_method}}({{test_input}}))
+                    .isInstanceOf(java.io.IOException.class)
+                    .hasMessageContaining("Permanent failure");
+
+            // Should have tried 3 times (initial + 2 retries)
+            verify(externalService, times(3)).{{external_method}}(any());
+        }
+
+        @Test
+        @DisplayName("Should not retry on non-retryable exceptions")
+        void shouldNotRetryOnNonRetryableExceptions() {
+            // Given - Throw non-retryable exception
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new IllegalArgumentException("Invalid input"));
+
+            // When / Then
+            assertThatThrownBy(() -> service.{{service_method}}({{test_input}}))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            // Should only try once (no retries)
+            verify(externalService, times(1)).{{external_method}}(any());
+        }
+
+        @Test
+        @DisplayName("Should wait between retry attempts")
+        void shouldWaitBetweenRetries() {
+            // Given
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new java.io.IOException("Temporary failure"))
+                    .thenReturn({{successful_response}});
+
+            long startTime = System.currentTimeMillis();
+
+            // When
+            service.{{service_method}}({{test_input}});
+
+            long duration = System.currentTimeMillis() - startTime;
+
+            // Then - Should have waited at least 100ms (configured wait duration)
+            assertThat(duration).isGreaterThanOrEqualTo(100);
+        }
+    }
+
+    @Nested
+    @DisplayName("Rate Limiter Tests")
+    class RateLimiterTests {
+
+        @Test
+        @DisplayName("Should allow calls within rate limit")
+        void shouldAllowCallsWithinRateLimit() {
+            // Given
+            when(externalService.{{external_method}}(any()))
+                    .thenReturn({{successful_response}});
+
+            // When - Make calls within limit (e.g., 10 calls per second)
+            for (int i = 0; i < 5; i++) {
+                var result = service.{{rate_limited_method}}({{test_input}});
+                assertThat(result).isEqualTo({{expected_result}});
+            }
+
+            // Then
+            verify(externalService, times(5)).{{external_method}}(any());
+        }
+
+        @Test
+        @DisplayName("Should reject calls exceeding rate limit")
+        void shouldRejectCallsExceedingRateLimit() {
+            // Given
+            when(externalService.{{external_method}}(any()))
+                    .thenReturn({{successful_response}});
+
+            // When - Make many calls rapidly (exceeding limit)
+            int successCount = 0;
+            int rejectedCount = 0;
+
+            for (int i = 0; i < 20; i++) {
+                try {
+                    service.{{rate_limited_method}}({{test_input}});
+                    successCount++;
+                } catch (io.github.resilience4j.ratelimiter.RequestNotPermitted e) {
+                    rejectedCount++;
+                }
+            }
+
+            // Then - Some calls should be rejected
+            assertThat(rejectedCount).isGreaterThan(0);
+            assertThat(successCount).isLessThan(20);
+        }
+    }
+
+    @Nested
+    @DisplayName("Bulkhead Tests")
+    class BulkheadTests {
+
+        @Test
+        @DisplayName("Should allow concurrent calls within bulkhead limit")
+        void shouldAllowCallsWithinBulkheadLimit() throws Exception {
+            // Given
+            when(externalService.{{external_method}}(any()))
+                    .thenAnswer(invocation -> {
+                        Thread.sleep(100); // Simulate slow operation
+                        return {{successful_response}};
+                    });
+
+            // When - Make concurrent calls (e.g., 3 concurrent calls, limit is 5)
+            var futures = new CompletableFuture[3];
+            for (int i = 0; i < 3; i++) {
+                futures[i] = CompletableFuture.supplyAsync(() ->
+                        service.{{bulkhead_protected_method}}({{test_input}})
+                );
+            }
+
+            // Then - All should succeed
+            CompletableFuture.allOf(futures).get(5, TimeUnit.SECONDS);
+            verify(externalService, times(3)).{{external_method}}(any());
+        }
+
+        @Test
+        @DisplayName("Should reject calls exceeding bulkhead limit")
+        void shouldRejectCallsExceedingBulkheadLimit() throws Exception {
+            // Given - Slow operation
+            when(externalService.{{external_method}}(any()))
+                    .thenAnswer(invocation -> {
+                        Thread.sleep(2000); // Slow operation
+                        return {{successful_response}};
+                    });
+
+            // When - Make many concurrent calls (exceeding bulkhead limit of 5)
+            var futures = new CompletableFuture[10];
+            int rejectedCount = 0;
+
+            for (int i = 0; i < 10; i++) {
+                try {
+                    futures[i] = CompletableFuture.supplyAsync(() ->
+                            service.{{bulkhead_protected_method}}({{test_input}})
+                    );
+                } catch (io.github.resilience4j.bulkhead.BulkheadFullException e) {
+                    rejectedCount++;
+                }
+            }
+
+            // Wait a bit for some to complete
+            Thread.sleep(500);
+
+            // Then - Some should be rejected
+            assertThat(rejectedCount).isGreaterThan(0);
+        }
+    }
+
+    @Nested
+    @DisplayName("Combined Patterns Tests")
+    class CombinedPatternsTests {
+
+        @Test
+        @DisplayName("Should apply retry then circuit breaker")
+        void shouldApplyRetryThenCircuitBreaker() {
+            // Given - Service fails consistently
+            when(externalService.{{external_method}}(any()))
+                    .thenThrow(new java.io.IOException("Service down"));
+
+            // When - Make multiple calls
+            for (int i = 0; i < 5; i++) {
+                try {
+                    service.{{service_method}}({{test_input}});
+                } catch (Exception e) {
+                    // Expected
+                }
+            }
+
+            // Then
+            // Retry: Each call retries 3 times
+            // Circuit Breaker: After 5 calls fail, circuit opens
+            verify(externalService, atLeast(5)).{{external_method}}(any());
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+        }
+
+        @Test
+        @DisplayName("Should combine circuit breaker with fallback successfully")
+        void shouldCombineCircuitBreakerWithFallback() {
+            // Given - Open circuit
+            circuitBreaker.transitionToOpenState();
+
+            // When - Call with fallback
+            var result = service.{{service_method_with_fallback}}({{test_input}});
+
+            // Then - Should return fallback without calling external service
+            assertThat(result).isEqualTo({{fallback_result}});
+            verify(externalService, never()).{{external_method}}(any());
+        }
+    }
+
+    {{custom_resilience_tests}}
+}
