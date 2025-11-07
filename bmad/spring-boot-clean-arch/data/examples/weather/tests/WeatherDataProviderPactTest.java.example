@@ -1,0 +1,167 @@
+package {{base_package}}.presentation.rest.pact;
+
+import au.com.dius.pact.provider.junit5.HttpTestTarget;
+import au.com.dius.pact.provider.junit5.PactVerificationContext;
+import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.Provider;
+import au.com.dius.pact.provider.junitsupport.State;
+import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
+import au.com.dius.pact.provider.spring.junit5.MockMvcTestTarget;
+import {{base_package}}.application.usecase.GetWeatherDataUseCase;
+import {{base_package}}.application.usecase.RecordWeatherDataUseCase;
+import {{base_package}}.presentation.rest.WeatherDataController;
+import {{base_package}}.presentation.rest.exception.WeatherDataNotFoundException;
+import {{base_package}}.presentation.rest.model.WeatherDataResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.TestTemplate;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+/**
+ * Pact Provider verification tests for WeatherData API.
+ *
+ * These tests verify that the provider satisfies the contracts
+ * defined by consumers in their Pact files.
+ *
+ * Provider: WeatherDataService
+ * Pact Files Location: target/pacts/
+ */
+@ExtendWith(SpringExtension.class)
+@WebMvcTest(WeatherDataController.class)
+@Provider("WeatherDataService")
+@PactFolder("target/pacts")
+@DisplayName("WeatherData API Provider Contract Verification")
+class WeatherDataProviderPactTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private RecordWeatherDataUseCase recordWeatherDataUseCase;
+
+    @MockBean
+    private GetWeatherDataUseCase getWeatherDataUseCase;
+
+    @BeforeEach
+    void setUp(PactVerificationContext context) {
+        context.setTarget(new MockMvcTestTarget(mockMvc));
+    }
+
+    /**
+     * Verify all Pact contracts.
+     */
+    @TestTemplate
+    @ExtendWith(PactVerificationInvocationContextProvider.class)
+    @DisplayName("Verify Pact contracts")
+    void verifyPact(PactVerificationContext context) {
+        context.verifyInteraction();
+    }
+
+    /**
+     * State: WeatherData can be created
+     *
+     * Sets up mock behavior for creating weather data.
+     */
+    @State("WeatherData can be created")
+    void toWeatherDataCanBeCreated() {
+        WeatherDataResponse response = new WeatherDataResponse(
+                UUID.randomUUID(),
+                "New York",
+                40.7128,
+                -74.0060,
+                25.0,
+                "CELSIUS",
+                65.0,
+                15.0,
+                LocalDateTime.now()
+        );
+
+        when(recordWeatherDataUseCase.execute(any()))
+                .thenReturn(response);
+    }
+
+    /**
+     * State: WeatherData with ID 550e8400-e29b-41d4-a716-446655440000 exists
+     *
+     * Sets up mock behavior for retrieving an existing weather data entry.
+     */
+    @State("WeatherData with ID 550e8400-e29b-41d4-a716-446655440000 exists")
+    void toWeatherDataExists() {
+        UUID id = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+        WeatherDataResponse response = new WeatherDataResponse(
+                id,
+                "New York",
+                40.7128,
+                -74.0060,
+                25.0,
+                "CELSIUS",
+                65.0,
+                15.0,
+                LocalDateTime.now()
+        );
+
+        when(getWeatherDataUseCase.execute(id))
+                .thenReturn(response);
+    }
+
+    /**
+     * State: WeatherData with ID 00000000-0000-0000-0000-000000000000 does not exist
+     *
+     * Sets up mock behavior for weather data not found scenario.
+     */
+    @State("WeatherData with ID 00000000-0000-0000-0000-000000000000 does not exist")
+    void toWeatherDataDoesNotExist() {
+        UUID id = UUID.fromString("00000000-0000-0000-0000-000000000000");
+
+        when(getWeatherDataUseCase.execute(id))
+                .thenThrow(new WeatherDataNotFoundException("WeatherData not found with ID: " + id));
+    }
+
+    /**
+     * State: Multiple weather data entries exist
+     *
+     * Sets up mock behavior for retrieving multiple weather data entries.
+     */
+    @State("Multiple weather data entries exist")
+    void toMultipleWeatherDataEntriesExist() {
+        List<WeatherDataResponse> responses = List.of(
+                new WeatherDataResponse(
+                        UUID.randomUUID(),
+                        "New York",
+                        40.7128,
+                        -74.0060,
+                        25.0,
+                        "CELSIUS",
+                        65.0,
+                        15.0,
+                        LocalDateTime.now()
+                ),
+                new WeatherDataResponse(
+                        UUID.randomUUID(),
+                        "London",
+                        51.5074,
+                        -0.1278,
+                        18.0,
+                        "CELSIUS",
+                        70.0,
+                        20.0,
+                        LocalDateTime.now()
+                )
+        );
+
+        when(getWeatherDataUseCase.getAllWeatherData())
+                .thenReturn(responses);
+    }
+}

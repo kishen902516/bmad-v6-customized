@@ -1,0 +1,321 @@
+package {{base_package}}.infrastructure.adapter.external;
+
+import {{base_package}}.infrastructure.adapter.external.exception.ExternalWeatherServiceException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.TestPropertySource;
+
+import java.io.IOException;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+/**
+ * Integration tests for Resilience4j patterns in ExternalWeatherService.
+ *
+ * Tests circuit breaker, retry, and fallback patterns for external weather API calls
+ * with real Resilience4j configuration.
+ */
+@SpringBootTest
+@TestPropertySource(properties = {
+        "resilience4j.circuitbreaker.instances.weatherService.sliding-window-size=5",
+        "resilience4j.circuitbreaker.instances.weatherService.failure-rate-threshold=50",
+        "resilience4j.circuitbreaker.instances.weatherService.wait-duration-in-open-state=10s",
+        "resilience4j.circuitbreaker.instances.weatherService.permitted-number-of-calls-in-half-open-state=2",
+        "resilience4j.retry.instances.weatherService.max-attempts=3",
+        "resilience4j.retry.instances.weatherService.wait-duration=100ms",
+        "resilience4j.retry.instances.weatherService.retry-exceptions=java.io.IOException"
+})
+@DisplayName("Weather Service Resilience4j Integration Tests")
+class WeatherServiceResilienceTest {
+
+    @Autowired
+    private ExternalWeatherService weatherService;
+
+    @Autowired(required = false)
+    private CircuitBreakerRegistry circuitBreakerRegistry;
+
+    @MockBean
+    private WeatherApiClient weatherApiClient;
+
+    private CircuitBreaker circuitBreaker;
+
+    @BeforeEach
+    void setUp() {
+        if (circuitBreakerRegistry != null) {
+            circuitBreaker = circuitBreakerRegistry.circuitBreaker("weatherService");
+            circuitBreaker.reset();
+        }
+        reset(weatherApiClient);
+    }
+
+    @Nested
+    @DisplayName("Circuit Breaker Tests")
+    class CircuitBreakerTests {
+
+        @Test
+        @DisplayName("Should allow calls when circuit is CLOSED")
+        void shouldAllowCallsWhenCircuitClosed() {
+            // Given
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenReturn(createSuccessfulWeatherResponse());
+
+            // When
+            var result = weatherService.getWeatherForCity("New York");
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getCity()).isEqualTo("New York");
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+            verify(weatherApiClient, times(1)).fetchWeatherData(any());
+        }
+
+        @Test
+        @DisplayName("Should open circuit after failure rate threshold exceeded")
+        void shouldOpenCircuitAfterFailureThreshold() {
+            // Given - Configure to fail
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenThrow(new ExternalWeatherServiceException("API unavailable"));
+
+            // When - Make calls to exceed failure threshold (5 calls, 50% threshold = 3 failures)
+            for (int i = 0; i < 5; i++) {
+                try {
+                    weatherService.getWeatherForCity("New York");
+                } catch (Exception e) {
+                    // Expected failures
+                }
+            }
+
+            // Then - Circuit should be OPEN
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+            assertThat(circuitBreaker.getMetrics().getFailureRate()).isGreaterThanOrEqualTo(50.0f);
+        }
+
+        @Test
+        @DisplayName("Should reject calls immediately when circuit is OPEN")
+        void shouldRejectCallsWhenCircuitOpen() {
+            // Given - Open the circuit
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenThrow(new ExternalWeatherServiceException("API unavailable"));
+
+            for (int i = 0; i < 5; i++) {
+                try {
+                    weatherService.getWeatherForCity("New York");
+                } catch (Exception e) {
+                    // Expected
+                }
+            }
+
+            reset(weatherApiClient);
+
+            // When - Try to make a call with OPEN circuit
+            // Then - Should fail fast without calling external service
+            assertThatThrownBy(() -> weatherService.getWeatherForCity("New York"))
+                    .isInstanceOf(io.github.resilience4j.circuitbreaker.CallNotPermittedException.class);
+
+            verify(weatherApiClient, never()).fetchWeatherData(any());
+        }
+
+        @Test
+        @DisplayName("Should provide fallback data when circuit is OPEN")
+        void shouldProvideFallbackWhenCircuitOpen() {
+            // Given - Open circuit
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenThrow(new ExternalWeatherServiceException("API unavailable"));
+
+            for (int i = 0; i < 5; i++) {
+                try {
+                    weatherService.getWeatherForCity("New York");
+                } catch (Exception e) {
+                    // Expected
+                }
+            }
+
+            // When - Call method with fallback
+            var result = weatherService.getWeatherForCityWithFallback("New York");
+
+            // Then - Should return fallback value
+            assertThat(result).isNotNull();
+            assertThat(result.getCity()).isEqualTo("New York");
+            assertThat(result.getSource()).isEqualTo("CACHE");  // Fallback source
+        }
+
+        @Test
+        @DisplayName("Should transition to HALF_OPEN and close on success")
+        void shouldCloseCircuitFromHalfOpen() {
+            // Given - Circuit in HALF_OPEN state
+            circuitBreaker.transitionToHalfOpenState();
+
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenReturn(createSuccessfulWeatherResponse());
+
+            // When - Make successful calls (2 permitted in HALF_OPEN)
+            for (int i = 0; i < 2; i++) {
+                weatherService.getWeatherForCity("New York");
+            }
+
+            // Then - Circuit should close
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
+        }
+    }
+
+    @Nested
+    @DisplayName("Retry Tests")
+    class RetryTests {
+
+        @Test
+        @DisplayName("Should retry on transient failures")
+        void shouldRetryOnTransientFailures() {
+            // Given - Fail twice, then succeed
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenThrow(new IOException("Network timeout"))
+                    .thenThrow(new IOException("Network timeout"))
+                    .thenReturn(createSuccessfulWeatherResponse());
+
+            // When
+            var result = weatherService.getWeatherForCity("New York");
+
+            // Then - Should succeed after retries
+            assertThat(result).isNotNull();
+            assertThat(result.getCity()).isEqualTo("New York");
+            verify(weatherApiClient, times(3)).fetchWeatherData(any());
+        }
+
+        @Test
+        @DisplayName("Should fail after max retry attempts exceeded")
+        void shouldFailAfterMaxRetries() {
+            // Given - Always fail
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenThrow(new IOException("Permanent network failure"));
+
+            // When / Then
+            assertThatThrownBy(() -> weatherService.getWeatherForCity("New York"))
+                    .isInstanceOf(IOException.class)
+                    .hasMessageContaining("Permanent network failure");
+
+            // Should have tried 3 times (initial + 2 retries)
+            verify(weatherApiClient, times(3)).fetchWeatherData(any());
+        }
+
+        @Test
+        @DisplayName("Should not retry on non-retryable exceptions")
+        void shouldNotRetryOnNonRetryableExceptions() {
+            // Given - Throw non-retryable exception
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenThrow(new IllegalArgumentException("Invalid city name"));
+
+            // When / Then
+            assertThatThrownBy(() -> weatherService.getWeatherForCity(""))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            // Should only try once (no retries)
+            verify(weatherApiClient, times(1)).fetchWeatherData(any());
+        }
+
+        @Test
+        @DisplayName("Should wait between retry attempts")
+        void shouldWaitBetweenRetries() {
+            // Given
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenThrow(new IOException("Temporary failure"))
+                    .thenReturn(createSuccessfulWeatherResponse());
+
+            long startTime = System.currentTimeMillis();
+
+            // When
+            weatherService.getWeatherForCity("New York");
+
+            long duration = System.currentTimeMillis() - startTime;
+
+            // Then - Should have waited at least 100ms (configured wait duration)
+            assertThat(duration).isGreaterThanOrEqualTo(100);
+        }
+    }
+
+    @Nested
+    @DisplayName("Combined Patterns Tests")
+    class CombinedPatternsTests {
+
+        @Test
+        @DisplayName("Should apply retry then circuit breaker")
+        void shouldApplyRetryThenCircuitBreaker() {
+            // Given - Service fails consistently
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenThrow(new IOException("API down"));
+
+            // When - Make multiple calls
+            for (int i = 0; i < 5; i++) {
+                try {
+                    weatherService.getWeatherForCity("New York");
+                } catch (Exception e) {
+                    // Expected
+                }
+            }
+
+            // Then
+            // Retry: Each call retries 3 times
+            // Circuit Breaker: After failures, circuit opens
+            verify(weatherApiClient, atLeast(5)).fetchWeatherData(any());
+            assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
+        }
+
+        @Test
+        @DisplayName("Should combine circuit breaker with fallback successfully")
+        void shouldCombineCircuitBreakerWithFallback() {
+            // Given - Open circuit
+            circuitBreaker.transitionToOpenState();
+
+            // When - Call with fallback
+            var result = weatherService.getWeatherForCityWithFallback("New York");
+
+            // Then - Should return fallback without calling external service
+            assertThat(result).isNotNull();
+            assertThat(result.getSource()).isEqualTo("CACHE");
+            verify(weatherApiClient, never()).fetchWeatherData(any());
+        }
+
+        @Test
+        @DisplayName("Should use cached data as fallback")
+        void shouldUseCachedDataAsFallback() {
+            // Given - First successful call to populate cache
+            when(weatherApiClient.fetchWeatherData(any()))
+                    .thenReturn(createSuccessfulWeatherResponse());
+
+            var firstResult = weatherService.getWeatherForCity("New York");
+            assertThat(firstResult.getSource()).isEqualTo("API");
+
+            // Then - Open circuit to force fallback
+            circuitBreaker.transitionToOpenState();
+
+            // When - Call with open circuit
+            var fallbackResult = weatherService.getWeatherForCityWithFallback("New York");
+
+            // Then - Should return cached data
+            assertThat(fallbackResult).isNotNull();
+            assertThat(fallbackResult.getCity()).isEqualTo("New York");
+            assertThat(fallbackResult.getSource()).isEqualTo("CACHE");
+        }
+    }
+
+    // Helper method to create successful weather response
+    private WeatherApiResponse createSuccessfulWeatherResponse() {
+        return new WeatherApiResponse(
+                "New York",
+                40.7128,
+                -74.0060,
+                25.0,
+                "CELSIUS",
+                65.0,
+                15.0,
+                "API"
+        );
+    }
+}
