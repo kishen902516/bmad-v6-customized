@@ -11,7 +11,9 @@
       "Bash(mvn test:*)",
       "Bash(git checkout:*)",
       "Bash(mvn clean test:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(chmod:*)",
+      "Bash(./register-module.sh:*)"
     ],
     "deny": [],
     "ask": []

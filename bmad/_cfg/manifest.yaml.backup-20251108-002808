@@ -6,6 +6,5 @@ modules:
   - core
   - bmb
   - bmm
-  - spring-boot-clean-arch
 ides:
   - claude-code
